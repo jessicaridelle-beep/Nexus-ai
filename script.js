@@ -47,6 +47,13 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  const normalized = value.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+  if (/(who created you|who made you|who built you|who is your creator)/.test(normalized)) {
+    addMessage("assistant", "I was created by the owner of the GitHub account jessicaridelle-beep, with the help of ChatGPT. 😎");
+    content.scrollIntoView({ behavior: "smooth", block: "end" });
+    return;
+  }
+
   conversation.push({ role: "user", content: value });
   sendButton.disabled = true;
   sendButton.textContent = "…";
