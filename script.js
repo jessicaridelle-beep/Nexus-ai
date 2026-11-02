@@ -1,0 +1,28 @@
+const form=document.getElementById('chatForm');
+const input=document.getElementById('promptInput');
+const content=document.getElementById('chatContent');
+form.addEventListener('submit',event=>{
+  event.preventDefault();
+  const value=input.value.trim();
+  if(!value)return;
+  const message=document.createElement('div');
+  message.className='user-message';
+  message.textContent=value;
+  content.appendChild(message);
+  const reply=document.createElement('div');
+  reply.className='assistant-message';
+  reply.style.marginTop='18px';
+  const icon=document.createElement('span');
+  icon.className='message-icon';
+  icon.textContent='N';
+  const body=document.createElement('div');
+  const title=document.createElement('b');
+  title.textContent='Thanks for trying NEXUS.';
+  const paragraph=document.createElement('p');
+  paragraph.textContent='The chat interface is working, but the AI engine has not been connected yet. That is the next stage of the build.';
+  body.append(title,paragraph);
+  reply.append(icon,body);
+  content.appendChild(reply);
+  input.value='';
+  content.scrollIntoView({behavior:'smooth',block:'end'});
+});
