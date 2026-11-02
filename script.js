@@ -1,6 +1,6 @@
 // Add your deployed Cloudflare Worker URL here after setup.
 // Example: https://nexus-ai-api.YOUR-SUBDOMAIN.workers.dev
-const NEXUS_API_URL = "";
+const NEXUS_API_URL = "https://nexus-ai-api.jessicaridelle.workers.dev";
 
 const form = document.getElementById("chatForm");
 const input = document.getElementById("promptInput");
