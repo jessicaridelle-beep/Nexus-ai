@@ -1,42 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#080b14">
-  <meta name="description" content="NEXUS AI — a new space for ideas, answers, and creativity.">
-  <title>NEXUS AI — Think beyond</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
-  <header class="topbar">
-    <a class="brand" href="#" aria-label="NEXUS AI home"><span class="brand-mark">N</span><span>NEXUS<span class="brand-ai">AI</span></span></a>
-    <nav><a href="#features">Features</a><a href="#about">About</a></nav>
-    <a class="top-cta" href="#workspace">Explore NEXUS <span>↗</span></a>
-  </header>
-  <main>
-    <section class="hero">
-      <div class="eyebrow"><span class="pulse"></span> THE NEXT SPACE FOR IDEAS</div>
-      <h1>Think beyond<br><span>what's possible.</span></h1>
-      <p class="hero-copy">Meet NEXUS AI. A fresh space to explore ideas, ask questions, and turn curiosity into something more.</p>
-      <div class="hero-actions"><a class="primary-btn" href="#workspace">Enter NEXUS <span>→</span></a><a class="quiet-link" href="#features">Discover more</a></div>
-      <div class="orbit-wrap" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="core"><span>N</span><i></i></div><div class="orbit-dot dot-a"></div><div class="orbit-dot dot-b"></div></div>
-      <div class="hero-foot"><span>BUILT FOR CURIOSITY</span><span>01 — A NEW BEGINNING</span></div>
-    </section>
-    <section class="workspace" id="workspace">
-      <div class="section-heading"><div><div class="eyebrow">YOUR SPACE</div><h2>Start with a question.</h2></div><span class="status"><i></i> AI setup in progress</span></div>
-      <div class="chat-panel">
-        <div class="chat-top"><div class="mini-brand"><span class="brand-mark small">N</span><div><b>NEXUS AI</b><small>Ideas start here</small></div></div><span class="preview-tag">EARLY PREVIEW</span></div>
-        <div class="chat-content" id="chatContent"><div class="assistant-message"><span class="message-icon">N</span><div><b>Welcome to NEXUS.</b><p>Welcome to your workspace. Send a message below to talk with NEXUS AI once the secure backend is connected.</p></div></div></div>
-        <form id="chatForm" class="chat-form"><input id="promptInput" type="text" placeholder="What would you like to explore?" autocomplete="off" aria-label="Your message"><button type="submit" aria-label="Send message">↑</button></form>
-        <p class="chat-note">Connect the secure backend to enable live AI replies. See SETUP.md in the GitHub repository.</p>
-      </div>
-    </section>
-    <section class="features" id="features"><div class="eyebrow">WHAT WE'RE BUILDING</div><h2>One space. <span>Many possibilities.</span></h2><div class="feature-grid"><article><div class="feature-number">01</div><div class="feature-icon">✳</div><h3>Explore</h3><p>Ask questions, discover concepts, and follow your curiosity.</p></article><article><div class="feature-number">02</div><div class="feature-icon">⌘</div><h3>Create</h3><p>Shape ideas into plans, projects, and creative work.</p></article><article><div class="feature-number">03</div><div class="feature-icon">◎</div><h3>Connect</h3><p>A simple home for the tools and intelligence we're bringing together.</p></article></div></section>
-    <section class="about" id="about"><div class="eyebrow">THE VISION</div><h2>Not just another tab.<br><span>A whole new starting point.</span></h2><p>NEXUS AI is an independent project in its early stages. We're building it one step at a time.</p></section>
-  </main>
-  <footer><a class="brand" href="#"><span class="brand-mark">N</span><span>NEXUS<span class="brand-ai">AI</span></span></a><span>© 2026 NEXUS AI · IN DEVELOPMENT</span></footer>
-  <script src="script.js?v=3"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#090b12"><meta name="description" content="ORIVANE — a curious AI workspace for ideas and answers."><title>ORIVANE — Think in new directions</title><link rel="stylesheet" href="style.css?v=4"></head><body>
+<aside class="sidebar" id="sidebar"><a class="brand" href="#"><span class="brand-mark">O</span><span>ORI<span class="brand-accent">VANE</span></span></a><button class="new-chat" id="newChat">＋ <span>New conversation</span></button><div class="side-label">YOUR SPACE</div><button class="side-link active" data-view="chat">◈ <span>Chat</span></button><button class="side-link" data-view="projects">▦ <span>Projects</span><span class="soon">SOON</span></button><button class="side-link" data-view="saved">✧ <span>Saved ideas</span><span class="soon">SOON</span></button><div class="sidebar-bottom"><div class="online-dot"></div><div><b>Orivane core</b><small>Connected · Preview</small></div><button id="themeToggle" aria-label="Toggle light theme">◐</button></div></aside>
+<main class="main"><header class="topbar"><button class="menu-button" id="menuButton">☰</button><div class="breadcrumbs">Workspace <span>/</span> <b id="currentPage">Chat</b></div><div class="top-right"><span class="model-pill"><i></i> ORIVANE · PREVIEW</span></div></header>
+<section class="chat-shell"><div class="welcome" id="welcome"><div class="orb-wrap"><div class="orb-ring"></div><div class="orb-ring ring-two"></div><div class="orb-core">O<span></span></div></div><div class="welcome-kicker">A LITTLE MORE THAN AN ANSWER</div><h1>Where will your<br><span>curiosity take you?</span></h1><p>Ideas, questions, weird what-ifs — start anywhere. We'll figure out the next step together.</p><div class="suggestions"><button class="suggestion" data-prompt="Give me a genuinely unusual idea for a small project."><span>✳</span><b>Surprise me</b><small>Something unexpected</small><i>↗</i></button><button class="suggestion" data-prompt="Teach me something fascinating in a simple way."><span>⌘</span><b>Teach me something</b><small>A quick mind-expander</small><i>↗</i></button><button class="suggestion" data-prompt="Help me brainstorm and improve a project idea."><span>◇</span><b>Build an idea</b><small>Turn a thought into a plan</small><i>↗</i></button><button class="suggestion" data-prompt="Tell me a strange but true fact, and say how sure you are."><span>◎</span><b>Reality check</b><small>Facts, clearly labelled</small><i>↗</i></button></div></div><div class="chat-content" id="chatContent" aria-live="polite"></div><div class="composer-wrap"><form id="chatForm" class="chat-form"><textarea id="promptInput" rows="1" placeholder="Message Orivane…" autocomplete="off" aria-label="Your message"></textarea><div class="composer-bottom"><span>↳ <span id="composerHint">Curiosity welcome. Be yourself.</span></span><button type="submit" aria-label="Send message">↑</button></div></form><div class="chat-note">Orivane can make mistakes. Check important information.</div></div></section>
+<section class="feature-strip"><div><span class="strip-icon">✳</span><b>Idea Fusion</b><small>Connect unlikely concepts</small></div><div><span class="strip-icon">◉</span><b>Reality Check</b><small>Separate facts from guesses</small></div><div><span class="strip-icon">⌘</span><b>Thought Branches</b><small>Explore different directions</small></div></section><footer><span>ORIVANE <span class="brand-accent">/</span> PERSONAL AI WORKSPACE</span><span>Built independently, one upgrade at a time.</span></footer></main><script src="script.js?v=4"></script></body></html>
