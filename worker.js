@@ -1,5 +1,5 @@
 const SITE_ORIGIN = "https://jessicaridelle-beep.github.io";
-const MODEL = "@cf/meta/llama-3.1-8b-instruct";
+const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
 
 function corsHeaders(origin) {
   return {
