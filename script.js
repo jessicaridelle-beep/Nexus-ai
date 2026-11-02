@@ -41,15 +41,14 @@ form.addEventListener("submit", async (event) => {
 
   addMessage("user", value);
   input.value = "";
-  if (!NEXUS_API_URL) {
-    addMessage("assistant", "The website is ready for its AI connection, but the private backend URL has not been added yet. Follow the setup guide in the GitHub repository to finish connecting me.");
+  const normalized = value.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+  if (/(who created|who made|who built|creator|founder|developed you)/.test(normalized)) {
+    addMessage("assistant", "I was created by the owner of the GitHub account jessicaridelle-beep, with the help of ChatGPT. 😎");
     content.scrollIntoView({ behavior: "smooth", block: "end" });
     return;
   }
-
-  const normalized = value.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
-  if (/(who created you|who made you|who built you|who is your creator)/.test(normalized)) {
-    addMessage("assistant", "I was created by the owner of the GitHub account jessicaridelle-beep, with the help of ChatGPT. 😎");
+  if (!NEXUS_API_URL) {
+    addMessage("assistant", "The website is ready for its AI connection, but the backend URL has not been added yet.");
     content.scrollIntoView({ behavior: "smooth", block: "end" });
     return;
   }
