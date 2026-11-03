@@ -13,6 +13,17 @@
  ];
  const nav=el("div","studio-nav-group");nav.append(el("div","side-label","","")); 
  const anchor=$("projectsOpen"); if(anchor){modules.forEach(([id,icon,name])=>{const b=el("button","side-link studio-nav",icon+" ");b.type="button";b.dataset.studio=id;b.append(el("span","",name));if(id!=="dashboard")b.append(el("span","wip-badge","WIP"));b.addEventListener("click",()=>open(id));anchor.insertAdjacentElement("afterend",b);});}
+ const sidebar=$("sidebar");
+ if(sidebar){
+  const controls=el("div","sidebar-scroll-controls");
+  const up=el("button","sidebar-scroll-arrow","↑"),down=el("button","sidebar-scroll-arrow","↓");
+  up.type=down.type="button";up.setAttribute("aria-label","Scroll sidebar up");down.setAttribute("aria-label","Scroll sidebar down");
+  up.addEventListener("click",()=>sidebar.scrollBy({top:-Math.max(220,sidebar.clientHeight*.65),behavior:"smooth"}));
+  down.addEventListener("click",()=>sidebar.scrollBy({top:Math.max(220,sidebar.clientHeight*.65),behavior:"smooth"}));
+  controls.append(up,down);sidebar.append(controls);
+  const update=()=>{const overflow=sidebar.scrollHeight>sidebar.clientHeight+4;controls.hidden=!overflow;up.disabled=sidebar.scrollTop<=4;down.disabled=sidebar.scrollTop+sidebar.clientHeight>=sidebar.scrollHeight-4;};
+  sidebar.addEventListener("scroll",update,{passive:true});window.addEventListener("resize",update);requestAnimationFrame(update);
+ }
  const overlay=el("div","studio-overlay");overlay.id="orivaneStudios";overlay.hidden=true;
  const modal=el("section","studio-modal");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","studioTitle");
  const header=el("header","studio-head"),heading=el("div",""),eyebrow=el("div","studio-eyebrow","ORIVANE WORKSPACE");const title=el("h2","","Dashboard"),subtitle=el("p","","Your tools, projects and saved information.");heading.append(eyebrow,title,subtitle);
