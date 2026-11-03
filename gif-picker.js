@@ -55,7 +55,7 @@
   status.textContent=term?"Searching KLIPY…":"Loading trending GIFs…";
   try{
    const endpoint=term
-    ? "https://api.klipy.com/api/v1/"+encodeURIComponent(key)+"/gifs/search?page=1&per_page=24&q="+encodeURIComponent(term)+"&locale=en"
+    ? "https://api.klipy.com/api/v1/"+encodeURIComponent(key)+"/gifs/search?page=1&per_page=24&q="+encodeURIComponent(term)+"&locale=en&country=be&contentfilter=high&media_filter=gif,tinygif"
     : "https://api.klipy.com/api/v1/"+encodeURIComponent(key)+"/gifs/trending?page=1&per_page=24&locale=en&country=be&contentfilter=high&media_filter=gif,tinygif";
    const response=await fetch(endpoint,{headers:{Accept:"application/json"}});
    let data;try{data=await response.json()}catch{throw new Error("KLIPY returned an unreadable response.");}
