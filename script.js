@@ -37,7 +37,7 @@ document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)closeDialog(o.id);}));
 let profileMode="register";
 let signedInUser=null;
-const authUrl="https://nexus-ai-api.jessicaridelle.workers.dev/";
+const authUrl=location.origin+"/";
 function profileStatus(message){document.getElementById("profileStatus").textContent=message;}
 function setProfileMode(mode){profileMode=mode;document.getElementById("profileSubmit").textContent=mode==="register"?"Create account":"Sign in";document.getElementById("profilePassword").autocomplete=mode==="register"?"new-password":"current-password";document.getElementById("profileModeSwitch").textContent=mode==="register"?"Already have an account? Sign in":"Need an account? Create one";profileStatus(mode==="register"?"Create a username and a password of at least 10 characters. JR is reserved.":"Enter your username and password to sign in.");}
 function showSignedIn(user){signedInUser=user;localStorage.setItem(PROFILE_KEY,user.username);document.getElementById("profileOpen").textContent=user.username;document.getElementById("profileSignout").hidden=false;document.getElementById("profileSubmit").hidden=true;document.getElementById("profileModeSwitch").hidden=true;document.getElementById("profileName").value=user.username;document.getElementById("profileName").disabled=true;document.getElementById("profilePassword").hidden=true;document.getElementById("profileSignout").hidden=false;profileStatus("Signed in as "+user.username+(user.role==="owner"?" · Owner account":"")+".");}
