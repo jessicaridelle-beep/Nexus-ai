@@ -129,26 +129,40 @@ export default {
       });
 
       let webContext = "";
+      let webSearchStatus = "not-needed";
       const latestQuestion = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-      const needsWeb = body.research === true || /\b(latest|today|current|right now|this week|recent|news|price|release|update|search the web|look up|on the internet|source|website|who won|weather)\b/i.test(latestQuestion);
-      if (needsWeb && env.AI && typeof env.AI.websearch === "function") {
-        try {
-          const searchResponse = await env.AI.websearch({
-            gatewayId: "default",
-            query: latestQuestion,
-            provider: "exa",
-            limit: 5
-          });
-          const searchData = await searchResponse.json();
-          const items = Array.isArray(searchData.items) ? searchData.items : (Array.isArray(searchData.results) ? searchData.results : []);
-          webContext = items.slice(0, 5).map((item, i) => {
-            const title = item.title || item.url || "Web result";
-            const url = item.url || "";
-            const description = item.description || item.snippet || "";
-            return (i + 1) + ". " + title + "\\n" + url + "\\n" + description;
-          }).join("\\n\\n");
-        } catch (searchError) {
-          webContext = "Live web search was attempted but is currently unavailable. Do not pretend you searched the web.";
+      const needsWeb = body.research === true || /\\b(latest|today|current|right now|this week|recent|news|price|release|update|search the web|look up|on the internet|internet|online|browse|website|source|who won|weather|recherche|sur internet|en ligne|actualité|aujourd'hui|actuel)\\b/i.test(latestQuestion);
+      if (needsWeb) {
+        if (!env.AI || typeof env.AI.websearch !== "function") {
+          webSearchStatus = "unavailable";
+          webContext = "Live web search is not available on this Worker runtime or binding. Do not claim to have searched or checked current information. Tell the user clearly that browsing is unavailable.";
+        } else {
+          try {
+            const searchResponse = await env.AI.websearch({
+              gatewayId: "default",
+              query: latestQuestion,
+              provider: "exa",
+              limit: 5
+            });
+            if (!searchResponse.ok) throw new Error("Web search returned HTTP " + searchResponse.status);
+            const searchData = await searchResponse.json();
+            const items = Array.isArray(searchData.items) ? searchData.items : (Array.isArray(searchData.results) ? searchData.results : []);
+            if (items.length) {
+              webSearchStatus = "searched";
+              webContext = items.slice(0, 5).map((item, i) => {
+                const title = item.title || item.url || "Web result";
+                const url = item.url || "";
+                const description = item.description || item.snippet || "";
+                return (i + 1) + ". " + title + "\\n" + url + "\\n" + description;
+              }).join("\\n\\n");
+            } else {
+              webSearchStatus = "no-results";
+              webContext = "Live web search ran but returned no usable results. Do not invent sources or claim that a fact was verified.";
+            }
+          } catch (searchError) {
+            webSearchStatus = "unavailable";
+            webContext = "Live web search was attempted but failed: " + (searchError && searchError.message ? searchError.message : "unknown error") + ". Do not pretend you searched successfully; tell the user browsing is temporarily unavailable.";
+          }
         }
       }
 
@@ -167,7 +181,7 @@ export default {
 
       const reply = result && typeof result.response === "string" ? result.response : "";
       if (!reply.trim()) return json({ error: "The AI model did not return a response." }, 502);
-      return json({ reply });
+      return json({ reply, webSearchStatus });
     } catch (error) {
       const message = error instanceof SyntaxError
         ? "The request body must be valid JSON."
