@@ -79,10 +79,10 @@ async function allowRateLimit(env, request, scope, limit, windowSeconds) {
   const address=request.headers.get("CF-Connecting-IP")||"unknown";
   const key=await digest(scope+"|"+address);
   const now=Math.floor(Date.now()/1000),start=now-windowSeconds;
-  await env.DB.prepare("INSERT INTO api_rate_limits(rate_key,count,window_start) VALUES(?,1,?) ON CONFLICT(rate_key) DO UPDATE SET count=CASE WHEN window_start<=? THEN 1 ELSE count+1 END,window_start=CASE WHEN window_start<=? THEN excluded.window_start ELSE window_start END").bind(key,now,start,start).run();
-  const row=await env.DB.prepare("SELECT count FROM api_rate_limits WHERE rate_key=?").bind(key).first();
-  return !!row && row.count<=limit;
- } catch { return true; }
+   await env.DB.prepare("INSERT INTO auth_attempts(attempt_key,count,window_start) VALUES(?,1,?) ON CONFLICT(attempt_key) DO UPDATE SET count=CASE WHEN window_start<=? THEN 1 ELSE count+1 END,window_start=CASE WHEN window_start<=? THEN excluded.window_start ELSE window_start END").bind("rate:"+key,now,start,start).run();
+   const row=await env.DB.prepare("SELECT count FROM auth_attempts WHERE attempt_key=?").bind("rate:"+key).first();
+   return !!row && row.count<=limit;
+  } catch { return false; }
 }
 async function currentUser(request,db) {
  const token=readCookie(request,AUTH_COOKIE); if(!token) return null;
