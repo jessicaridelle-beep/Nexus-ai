@@ -167,7 +167,7 @@
     const data=await response.json(),s=data.services||{};
     const set=(id,state,kind,detail)=>{const c=cards.get(id);if(!c)return;c.pill.textContent=state;c.pill.className="status-pill "+kind;c.detail.textContent=detail;};
     set("chat",s.aiChat?"READY":"WIP",s.aiChat?"ready":"wip",s.aiChat?"Worker AI binding detected.":"Worker AI binding is not configured.");
-    set("research",s.webSearch?"WIP":"SOON",s.webSearch?"wip":"soon",s.webSearch?"Search method is exposed by the Worker runtime; actual search requests still need reliability testing.":"This Worker runtime does not expose the live web-search method.");
+    set("research","WIP","wip",s.webSearch?"Early Access only. Search method is exposed by the Worker runtime; actual search requests still need reliability testing.":"Early Access only. This Worker runtime does not expose the live web-search method yet.");
     set("klipy","WIP","wip",s.klipy?"Early Access only. KLIPY server key detected; provider requests can be attempted by entitled members.":"Early Access only. Configure the KLIPY server key to enable GIF search for entitled members.");
     set("profile",s.secureAuth?"WIP":"SOON",s.secureAuth?"wip":"soon",s.secureAuth?"D1 account storage and password/session endpoints are deployed. JR owner setup is still locked; browser cookie persistence and full sign-in flow have not yet been tested end to end.":"Secure account storage is not connected.");
     set("ceo",s.ownerClaimConfigured?"WIP":"SOON",s.ownerClaimConfigured?"wip":"soon",s.ownerClaimConfigured?"The private JR owner-claim setup is configured; role-gated owner tools still need implementation.":"JR is reserved. A private owner-claim secret must be configured before it can be claimed.");
