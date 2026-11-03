@@ -65,7 +65,7 @@ async function issueSession(db,userId) {
  await db.prepare("INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)").bind(tokenHash,userId,now+SESSION_SECONDS,now).run();
  return token;
 }
-function cookieHeader(token,maxAge=SESSION_SECONDS) { return AUTH_COOKIE+"="+token+"; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age="+maxAge; }
+function cookieHeader(token,maxAge=SESSION_SECONDS) { return AUTH_COOKIE+"="+token+"; Path=/; HttpOnly; Secure; SameSite=None; Max-Age="+maxAge; }
 function readCookie(request,name) {
  const raw=request.headers.get("Cookie")||"";
  for(const part of raw.split(";")) { const i=part.indexOf("="); if(i>0&&part.slice(0,i).trim()===name) return part.slice(i+1).trim(); }
@@ -83,7 +83,8 @@ function corsHeaders(origin) {
     "Access-Control-Allow-Origin": origin === SITE_ORIGIN ? SITE_ORIGIN : "null",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Vary": "Origin"
+    "Vary": "Origin",
+    "Access-Control-Allow-Credentials": origin === SITE_ORIGIN ? "true" : "false"
   };
 }
 
