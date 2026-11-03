@@ -18,7 +18,7 @@
  const header=el("header","studio-head"),heading=el("div",""),eyebrow=el("div","studio-eyebrow","ORIVANE WORKSPACE");const title=el("h2","","Dashboard"),subtitle=el("p","","Your tools, projects and saved information.");heading.append(eyebrow,title,subtitle);
  const close=el("button","studio-close","×");close.type="button";close.setAttribute("aria-label","Close workspace");close.addEventListener("click",shut);header.append(heading,close);
  const body=el("div","studio-body");modal.append(header,body);overlay.append(modal);document.body.append(overlay);
- function open(id){const item=modules.find(x=>x[0]===id)||modules[0];if(id!=="dashboard"&&typeof window.orivaneWipGate==="function"){window.orivaneWipGate(item[2],()=>showStudio(id));return;}showStudio(id);} function showStudio(id){const item=modules.find(x=>x[0]===id)||modules[0];title.textContent=item[2];subtitle.textContent=item[3];body.replaceChildren();overlay.hidden=false;document.body.classList.add("studio-open");document.querySelectorAll(".studio-nav").forEach(b=>b.classList.toggle("active",b.dataset.studio===id));render(id);close.focus();}
+ function open(id){const item=modules.find(x=>x[0]===id)||modules[0];if(id!=="dashboard"&&typeof window.orivaneWipGate==="function"){window.orivaneWipGate(item[2],()=>showStudio(id));return;}showStudio(id);} function showStudio(id){body.classList.remove("studio-dashboard-body");modal.querySelector(".studio-scroll-controls")?.remove();const item=modules.find(x=>x[0]===id)||modules[0];title.textContent=item[2];subtitle.textContent=item[3];body.replaceChildren();overlay.hidden=false;document.body.classList.add("studio-open");document.querySelectorAll(".studio-nav").forEach(b=>b.classList.toggle("active",b.dataset.studio===id));render(id);close.focus();}
  function shut(){overlay.hidden=true;document.body.classList.remove("studio-open");document.querySelectorAll(".studio-nav").forEach(b=>b.classList.remove("active"));}
  overlay.addEventListener("click",e=>{if(e.target===overlay)shut()});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut()});
  function section(kicker,heading,desc){const box=el("div","studio-section");box.append(el("div","studio-kicker",kicker),el("h3","",heading),el("p","",desc));return box;}
@@ -37,6 +37,16 @@
   const stats=el("div","studio-stats");[[tasks.filter(x=>!x.done).length,"Open tasks"],[mem.length,"Saved memories"],[drafts.length,"Code drafts"],[imgs.length,"Generated images"]].forEach(([v,l])=>{const c=el("div","studio-stat");c.append(el("b","",String(v)),el("small","",l));stats.append(c)});body.append(stats);
   const grid=el("div","studio-card-grid");modules.slice(1).forEach(([key,icon,name,desc])=>{const c=el("button","studio-launch");c.type="button";c.append(el("span","studio-launch-icon",icon),el("b","",name),el("small","",desc),el("i","","Open ↗"));c.addEventListener("click",()=>open(key));grid.append(c)});body.append(grid);
   const note=el("p","studio-note","Your saved memories, tasks and drafts are stored locally in this browser. They are not synced between devices.");body.append(note);
+  body.classList.add("studio-dashboard-body");
+  const scrollControls=el("div","studio-scroll-controls");
+  const up=action("↑",()=>body.scrollBy({top:-Math.max(300,body.clientHeight*.72),behavior:"smooth"}),"studio-scroll-arrow");
+  const down=action("↓",()=>body.scrollBy({top:Math.max(300,body.clientHeight*.72),behavior:"smooth"}),"studio-scroll-arrow");
+  up.setAttribute("aria-label","Scroll dashboard up");down.setAttribute("aria-label","Scroll dashboard down");
+  scrollControls.append(up,down);modal.append(scrollControls);
+  const updateScrollArrows=()=>{up.disabled=body.scrollTop<=4;down.disabled=body.scrollTop+body.clientHeight>=body.scrollHeight-4;};
+  body.addEventListener("scroll",updateScrollArrows,{passive:true});
+  requestAnimationFrame(updateScrollArrows);
+
  }
  function imageStudio(){
   const intro=section("CREATIVE WORKSPACE","Turn a prompt into an image","Describe a safe, non-explicit scene. Images are generated using ORIVANE's connected image model.");body.append(intro);
