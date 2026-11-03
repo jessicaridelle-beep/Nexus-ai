@@ -16,17 +16,17 @@
  }
  function mediaUrl(item){
    const media=item?.media_formats||item?.media||item?.images||item?.file||item?.content||{};
-   const candidates=[media?.gif?.url,media?.mediumgif?.url,media?.tinygif?.url,media?.nanogif?.url,item?.url,item?.media_url,item?.gif_url,media?.url,media?.original?.url,media?.fixed_height?.url,media?.fixed_width?.url,media?.medium?.url,media?.preview?.url,item?.file_url];
+   const candidates=[media?.gif?.url,media?.mediumgif?.url,media?.tinygif?.url,media?.nanogif?.url,media?.original?.url,media?.fixed_height?.url,media?.fixed_width?.url,media?.medium?.url,media?.preview?.url,media?.url,item?.url,item?.media_url,item?.gif_url,item?.file_url];
    return candidates.find(x=>typeof x==="string"&&/^https:\/\//i.test(x))||"";
  }
  function previewUrl(item){
-   const media=item?.media||item?.images||item?.file||item?.content||{};
+   const media=item?.media_formats||item?.media||item?.images||item?.file||item?.content||{};
    const candidates=[media?.tinygif?.url,media?.nanogif?.url,item?.preview_url,item?.thumbnail_url,media?.preview?.url,media?.tiny?.url,media?.fixed_width_small?.url,media?.fixed_height_small?.url,media?.fixed_width?.url,media?.gif?.url,media?.url,media?.original?.url];
    return candidates.find(x=>typeof x==="string"&&/^https:\/\//i.test(x))||mediaUrl(item);
  }
  function render(items){
   grid.replaceChildren();
-  if(!items.length){status.textContent="No GIFs found. Try another search.";return;}
+  if(!items.length){status.textContent="No GIFs found. Try another search or check your KLIPY key.";return;}
   status.textContent="Tap a GIF to send it into chat · Powered by KLIPY";
   items.forEach(item=>{
    const url=mediaUrl(item),preview=previewUrl(item);
@@ -37,7 +37,7 @@
    const label=document.createElement("span");label.textContent="＋ Send";
    card.append(img,label);
    card.addEventListener("click",()=>{
-    if(item?.slug){fetch("https://api.klipy.com/api/v1/"+encodeURIComponent(key)+"/gifs/share/"+encodeURIComponent(item.slug),{method:"POST"}).catch(()=>{});}
+    if(item?.slug){const activeKey=localStorage.getItem(KEY)||"";if(activeKey)fetch("https://api.klipy.com/api/v1/"+encodeURIComponent(activeKey)+"/gifs/share/"+encodeURIComponent(item.slug),{method:"POST",headers:{Accept:"application/json"}}).catch(()=>{});}
     if(typeof window.sendMessage!=="function"){status.textContent="Chat is not ready yet.";return;}
     show(false);window.sendMessage(url);
    });
@@ -50,7 +50,7 @@
   const thisRequest=++requestNo;
   grid.replaceChildren();
   if(!key){
-    status.textContent="GIF search needs a KLIPY app key. Tap “Set up GIFs” below to add one; no other website is opened.";
+    status.textContent="Add your KLIPY app key in the setup area below to load GIFs.";
     return;
   }
   status.textContent=term?"Searching KLIPY…":"Loading trending GIFs…";
@@ -62,21 +62,22 @@
    let data;try{data=await response.json()}catch{throw new Error("KLIPY returned an unreadable response.");}
    if(thisRequest!==requestNo)return;
    if(!response.ok)throw new Error(data?.message||data?.error||("KLIPY request failed ("+response.status+"). Check the app key and its access."));
-   render(findItems(data));
+   const items=findItems(data);
+   if(!items.length&&data?.error)throw new Error(typeof data.error==="string"?data.error:"KLIPY returned an API error.");
+   render(items);
   }catch(error){if(thisRequest===requestNo)status.textContent=(error.message||"Couldn't load GIFs.")+" Your chat still works; GIF search needs a valid KLIPY key and browser access to api.klipy.com.";}
  }
- function openKeySetup(){
-   const current=localStorage.getItem(KEY)||"";
-   const value=prompt("Enter your KLIPY app key. Create one in the KLIPY Partner Panel. The key is stored only in this browser and used for direct requests to KLIPY.",current);
-   if(value===null)return;
-   if(!value.trim()){localStorage.removeItem(KEY);status.textContent="KLIPY app key cleared from this browser.";grid.replaceChildren();return;}
-   localStorage.setItem(KEY,value.trim());load(query.value.trim());
- }
- const setup=document.createElement("button");
- setup.type="button";setup.className="gif-setup-button";setup.textContent="⚙ Set up GIFs";
- setup.addEventListener("click",openKeySetup);
- const attribution=document.createElement("div");attribution.className="gif-attribution";attribution.textContent="Powered by KLIPY";
- const footer=document.createElement("div");footer.className="gif-picker-footer";footer.append(setup,attribution);panel.append(footer);
+ const footer=document.createElement("div");footer.className="gif-picker-footer";
+ const setupForm=document.createElement("form");setupForm.className="gif-key-form";
+ const keyLabel=document.createElement("label");keyLabel.className="gif-key-label";keyLabel.textContent="KLIPY app key";keyLabel.htmlFor="klipyAppKey";
+ const keyInput=document.createElement("input");keyInput.id="klipyAppKey";keyInput.type="password";keyInput.autocomplete="off";keyInput.placeholder="Paste your app key";keyInput.value=localStorage.getItem(KEY)||"";
+ const keySave=document.createElement("button");keySave.type="submit";keySave.textContent="Save & test";
+ const keyClear=document.createElement("button");keyClear.type="button";keyClear.className="gif-key-clear";keyClear.textContent="Clear key";
+ const keyHelp=document.createElement("a");keyHelp.href="https://docs.klipy.com/";keyHelp.target="_blank";keyHelp.rel="noopener noreferrer";keyHelp.textContent="KLIPY API help ↗";
+ setupForm.append(keyLabel,keyInput,keySave,keyClear,keyHelp);footer.append(setupForm);
+ const attribution=document.createElement("div");attribution.className="gif-attribution";attribution.textContent="Powered by KLIPY · Results stay in provider order";footer.append(attribution);panel.append(footer);
+ keyClear.addEventListener("click",()=>{localStorage.removeItem(KEY);keyInput.value="";grid.replaceChildren();status.textContent="KLIPY key cleared from this browser.";});
+ setupForm.addEventListener("submit",e=>{e.preventDefault();const value=keyInput.value.trim();if(!value){status.textContent="Paste your KLIPY app key first.";return;}localStorage.setItem(KEY,value);status.textContent="Testing KLIPY connection…";load(query.value.trim());});
  form.addEventListener("submit",e=>{e.preventDefault();load(query.value.trim());});
  panel.querySelectorAll("[data-gif-search]").forEach(b=>b.addEventListener("click",()=>{query.value=b.dataset.gifSearch;load(query.value);}));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden)show(false);});
