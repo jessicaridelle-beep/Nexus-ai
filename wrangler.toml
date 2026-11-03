@@ -1,4 +1,4 @@
-name = "orivane-api"
+name = "nexus-ai-api"
 main = "worker.js"
 compatibility_date = "2026-10-01"
 
