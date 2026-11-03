@@ -40,5 +40,5 @@
  form.addEventListener("submit",e=>{e.preventDefault();const term=query.value.trim();if(term)load(term);});
  panel.querySelectorAll("[data-gif-search]").forEach(b=>b.addEventListener("click",()=>{query.value=b.dataset.gifSearch;load(query.value);}));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden)show(false);});
- load("trending");
+ load("");
 })();
