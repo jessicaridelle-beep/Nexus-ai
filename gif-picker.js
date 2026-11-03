@@ -3,7 +3,7 @@
  const $=id=>document.getElementById(id);
  const panel=$("gifPanel"),button=$("gifButton"),form=$("gifForm"),query=$("gifQuery"),grid=$("gifResults"),status=$("gifStatus");
  if(!panel||!button||!form||!grid)return;
- const API="https://orivane-api.jessicaridelle.workers.dev/?action=klipy-gifs";
+ const API="https://nexus-ai-api.jessicaridelle.workers.dev/?action=klipy-gifs";
  let requestNo=0;
  button.setAttribute("aria-controls","gifPanel");button.setAttribute("aria-expanded","false");
  function show(open){panel.hidden=!open;button.setAttribute("aria-expanded",String(open));if(open){query.focus();load(query.value.trim());}}
@@ -136,7 +136,7 @@
   createSubmit.disabled=true;createSubmit.textContent="Creating…";createStatus.textContent="Generating the animation frames with ORIVANE AI…";createResult.hidden=true;
   generatedGifUrl="";
   try{
-   const response=await fetch("https://orivane-api.jessicaridelle.workers.dev/?action=create-gif",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
+   const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=create-gif",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
    let data;try{data=await response.json();}catch{throw new Error("The GIF service returned an unreadable response.");}
    if(!response.ok)throw new Error(data.error||("GIF generation failed ("+response.status+")."));
    if(typeof data.image_data_url!=="string"||!data.image_data_url.startsWith("data:image/"))throw new Error("The AI did not return a usable storyboard image.");
