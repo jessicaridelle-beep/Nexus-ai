@@ -238,15 +238,35 @@ export default {
 
     const authActions = ["auth-register","auth-login","auth-me","auth-logout","auth-owner-claim","early-access-status"];
     if (authActions.includes(requestedAction)) {
-      if (!env.DB) return json({error:"Authentication storage is not connected."},503);
-      if (request.method === "GET" && !["auth-me","early-access-status"].includes(requestedAction)) return json({error:"Use POST for this action."},405);
+      const authUrl = new URL(request.url);
+      const iframeTransport = authUrl.searchParams.get("transport") === "iframe";
+      const requestId = authUrl.searchParams.get("request_id") || "";
+      const authReply = (payload, status = 200, sessionToken = null) => {
+        const responseHeaders = { ...headers, "Cache-Control": "no-store" };
+        if (sessionToken !== null) responseHeaders["Set-Cookie"] = cookieHeader(sessionToken, sessionToken === "" ? 0 : SESSION_SECONDS);
+        if (!iframeTransport) {
+          responseHeaders["Content-Type"] = "application/json; charset=utf-8";
+          return new Response(JSON.stringify(payload), { status, headers: responseHeaders });
+        }
+        const safePayload = JSON.stringify(payload).replace(/</g, "\\u003c");
+        const safeRequestId = JSON.stringify(requestId);
+        const html = `<!doctype html><meta charset="utf-8"><script>parent.postMessage({type:"orivane-auth",requestId:${safeRequestId},payload:${safePayload}},"${SITE_ORIGIN}");</script>`;
+        responseHeaders["Content-Type"] = "text/html; charset=utf-8";
+        responseHeaders["X-Content-Type-Options"] = "nosniff";
+        return new Response(html, { status, headers: responseHeaders });
+      };
+
+      if (!env.DB) return authReply({error:"Authentication storage is not connected."},503);
+      if (iframeTransport && request.method === "POST" && origin !== SITE_ORIGIN) return authReply({error:"This website is not allowed to submit account changes."},403);
+
+      if (request.method === "GET" && !["auth-me","early-access-status"].includes(requestedAction)) return authReply({error:"Use POST for this action."},405);
       if (request.method === "GET" && requestedAction === "auth-me") {
         const user=await currentUser(request,env.DB);
-        return json({authenticated:!!user,user:user?{username:user.username,role:user.role}:null});
+        return authReply({authenticated:!!user,user:user?{username:user.username,role:user.role}:null});
       }
       if (request.method === "GET" && requestedAction === "early-access-status") {
         const user=await currentUser(request,env.DB);
-        if (!user) return json({authenticated:false,earlyAccess:false,checkoutReady:!!(env.STRIPE_SECRET_KEY&&env.STRIPE_WEBHOOK_SECRET)});
+        if (!user) return authReply({authenticated:false,earlyAccess:false,checkoutReady:!!(env.STRIPE_SECRET_KEY&&env.STRIPE_WEBHOOK_SECRET)});
         let earlyAccess=false;
         try {
           const entitlement=await env.DB.prepare("SELECT id FROM user_entitlements WHERE user_id=? AND entitlement=? AND status=? LIMIT 1").bind(user.id,"early_access","active").first();
@@ -254,56 +274,66 @@ export default {
         } catch (error) {
           console.error("Early Access entitlement lookup failed:",error&&error.message?error.message:error);
         }
-        return json({authenticated:true,username:user.username,earlyAccess,checkoutReady:!!(env.STRIPE_SECRET_KEY&&env.STRIPE_WEBHOOK_SECRET)});
+        return authReply({authenticated:true,username:user.username,earlyAccess,checkoutReady:!!(env.STRIPE_SECRET_KEY&&env.STRIPE_WEBHOOK_SECRET)});
       }
-      if (request.method !== "POST") return json({error:"Use POST for this action."},405);
+      if (request.method !== "POST") return authReply({error:"Use POST for this action."},405);
       if (requestedAction === "auth-logout") {
         const token=readCookie(request,AUTH_COOKIE);
         if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await digest(token)).run();
-        return new Response(JSON.stringify({ok:true}),{headers:{...headers,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","Set-Cookie":cookieHeader("",0)}});
+        return authReply({ok:true},200,"");
       }
       const contentType=request.headers.get("Content-Type")||"";
       const authContentType=contentType.toLowerCase();
-      if (!authContentType.startsWith("application/json") && !authContentType.startsWith("text/plain")) return json({error:"Send authentication requests as JSON text."},415);
-      let input={}; try { input=JSON.parse(await request.text()); } catch { return json({error:"Enter valid JSON."},400); }
-      if (!input || typeof input!=="object" || Array.isArray(input)) return json({error:"Enter valid authentication details."},400);
+      let input={};
+      try {
+        if (authContentType.startsWith("application/x-www-form-urlencoded")) {
+          input=Object.fromEntries(new URLSearchParams(await request.text()).entries());
+        } else if (authContentType.startsWith("application/json") || authContentType.startsWith("text/plain")) {
+          input=JSON.parse(await request.text());
+        } else {
+          return authReply({error:"Send authentication details using the account form."},415);
+        }
+      } catch {
+        return authReply({error:"Enter valid authentication details."},400);
+      }
+      if (!input || typeof input!=="object" || Array.isArray(input)) return authReply({error:"Enter valid authentication details."},400);
       const username=String(input.username||"").trim().normalize("NFKC");
       const password=String(input.password||"");
-      if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) return json({error:"Username must be 3–24 characters using letters, numbers or underscores."},400);
-      if (password.length<10 || password.length>128) return json({error:"Password must be between 10 and 128 characters."},400);
+      if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) return authReply({error:"Username must be 3–24 characters using letters, numbers or underscores."},400);
+      if (password.length<10 || password.length>128) return authReply({error:"Password must be between 10 and 128 characters."},400);
       const ip=request.headers.get("CF-Connecting-IP")||"unknown";
       const attemptKey=await digest(ip+"|"+username.toLowerCase());
       const now=Math.floor(Date.now()/1000);
       const attempt=await env.DB.prepare("SELECT count,window_start FROM auth_attempts WHERE attempt_key=?").bind(attemptKey).first();
-      if (attempt && attempt.window_start>now-900 && attempt.count>=8) return json({error:"Too many attempts. Wait 15 minutes and try again."},429);
+      if (attempt && attempt.window_start>now-900 && attempt.count>=8) return authReply({error:"Too many attempts. Wait 15 minutes and try again."},429);
       await env.DB.prepare("INSERT INTO auth_attempts(attempt_key,count,window_start) VALUES(?,1,?) ON CONFLICT(attempt_key) DO UPDATE SET count=CASE WHEN window_start<? THEN 1 ELSE count+1 END,window_start=CASE WHEN window_start<? THEN excluded.window_start ELSE window_start END").bind(attemptKey,now,now-900,now-900).run();
       if (requestedAction==="auth-register" || requestedAction==="auth-owner-claim") {
         const isOwner=requestedAction==="auth-owner-claim";
         if (isOwner) {
-          if (!env.JR_SETUP_CODE || input.setupCode!==env.JR_SETUP_CODE) return json({error:"Owner setup code is invalid."},403);
+          if (!env.JR_SETUP_CODE || input.setupCode!==env.JR_SETUP_CODE) return authReply({error:"Owner setup code is invalid."},403);
           const claimed=await env.DB.prepare("SELECT value FROM auth_meta WHERE key='jr_claimed'").first();
-          if (claimed) return json({error:"The JR account has already been claimed."},409);
-          if (username.toLowerCase()!=="jr") return json({error:"The protected owner username must be JR."},400);
-        } else if (username.toLowerCase()==="jr") return json({error:"JR is reserved for the protected owner account."},403);
+          if (claimed) return authReply({error:"The JR account has already been claimed."},409);
+          if (username.toLowerCase()!=="jr") return authReply({error:"The protected owner username must be JR."},400);
+        } else if (username.toLowerCase()==="jr") return authReply({error:"JR is reserved for the protected owner account."},403);
         const existing=await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
-        if (existing) return json({error:"That username is already taken."},409);
+        if (existing) return authReply({error:"That username is already taken."},409);
         const salt=toB64(crypto.getRandomValues(new Uint8Array(16)));
         const hash=await passwordHash(password,salt);
         const id=crypto.randomUUID();
         try {
           await env.DB.prepare("INSERT INTO users(id,username,password_hash,password_salt,password_iterations,role) VALUES(?,?,?,?,?,?)").bind(id,username,hash,salt,PASSWORD_ITERATIONS,isOwner?"owner":"user").run();
           if (isOwner) await env.DB.prepare("INSERT INTO auth_meta(key,value) VALUES('jr_claimed','1')").run();
-        } catch { return json({error:"Could not create this account. Try another username."},409); }
+        } catch { return authReply({error:"Could not create this account. Try another username."},409); }
         const token=await issueSession(env.DB,id);
-        return new Response(JSON.stringify({ok:true,user:{username,role:isOwner?"owner":"user"}}),{status:201,headers:{...headers,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","Set-Cookie":cookieHeader(token)}});
+        return authReply({ok:true,user:{username,role:isOwner?"owner":"user"}},201,token);
       }
       if (requestedAction==="auth-login") {
         const row=await env.DB.prepare("SELECT id,username,password_hash,password_salt,password_iterations,role FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
         const candidate=row&&row.password_salt?await passwordHash(password,row.password_salt,row.password_iterations||PASSWORD_ITERATIONS):"";
-        if (!row || !row.password_hash || candidate!==row.password_hash) return json({error:"Username or password is incorrect."},401);
+        if (!row || !row.password_hash || candidate!==row.password_hash) return authReply({error:"Username or password is incorrect."},401);
         await env.DB.prepare("DELETE FROM auth_attempts WHERE attempt_key=?").bind(attemptKey).run();
         const token=await issueSession(env.DB,row.id);
-        return new Response(JSON.stringify({ok:true,user:{username:row.username,role:row.role}}),{headers:{...headers,"Content-Type":"application/json; charset=utf-8","Set-Cookie":cookieHeader(token)}});
+        return authReply({ok:true,user:{username:row.username,role:row.role}},200,token);
       }
     }
 
