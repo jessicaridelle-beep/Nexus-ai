@@ -96,7 +96,7 @@
  const $=id=>document.getElementById(id),el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
  const sidebar=$("sidebar");if(!sidebar)return;const STORE="orivane-action-history-v2",API="https://nexus-ai-api.jessicaridelle.workers.dev/";
  const read=()=>{try{const v=JSON.parse(localStorage.getItem(STORE)||"[]");return Array.isArray(v)?v:[]}catch{return[];}},save=items=>localStorage.setItem(STORE,JSON.stringify(items.slice(0,20)));
- const btn=el("button","side-link");btn.type="button";btn.id="actionStudioOpen";btn.innerHTML='⚡ Action Studio <span class="wip-badge">WIP</span>';const anchor=$("projectsOpen");if(anchor)anchor.insertAdjacentElement("afterend",btn);
+ const btn=el("button","side-link");btn.type="button";btn.id="actionStudioOpen";btn.textContent="⚡ Action Studio";const anchor=$("projectsOpen");if(anchor)anchor.insertAdjacentElement("afterend",btn);
  const overlay=el("div","action-overlay");overlay.id="actionStudio";overlay.hidden=true;const modal=el("section","action-modal action-modal-expanded");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","actionStudioTitle");
  const head=el("div","action-head"),titles=el("div","");titles.append(el("div","action-eyebrow","TASK ORCHESTRATION"),el("h2","","Action Studio"),el("p","","Plan a task, execute it step by step, and keep the results."));
  const close=el("button","workspace-close","×");close.type="button";close.setAttribute("aria-label","Close Action Studio");head.append(titles,close);
@@ -147,14 +147,14 @@
    {id:"chat",name:"AI chat",state:"READY",kind:"ready",detail:"The chat interface and Worker AI route are implemented."},
    {id:"personality",name:"Messenger-style personality",state:"READY",kind:"ready",detail:"Natural conversation, contextual replies, honest uncertainty and a clear AI identity are configured in the live model prompt."},
    {id:"research",name:"Research / update checking",state:"WIP",kind:"wip",detail:"Available to all members while in development. The Worker can attempt live search when its runtime exposes the search tool; live reliability still needs end-to-end testing."},
-   {id:"actions",name:"Action Studio",state:"WIP",kind:"wip",detail:"Available to all members while in development. Creates plans of up to 6 steps, runs them sequentially, supports stop/retry and exports reports. It currently produces content; it cannot directly edit your files or control other apps."},
+   {id:"actions",name:"Action Studio",state:"READY",kind:"ready",detail:"Released. Creates AI task plans, completes steps sequentially, supports stop/retry and exports reports. It prepares results and does not directly control other apps or edit files."},
    {id:"projects",name:"Projects workspace",state:"READY",kind:"ready",detail:"Create projects, notes and task lists locally in this browser."},
    {id:"dashboard",name:"ORIVANE Dashboard",state:"READY",kind:"ready",detail:"Workspace overview with quick access to the new studios and local activity counts."},
    {id:"image-studio",name:"Image Studio",state:"WIP",kind:"wip",detail:"Generate images with the connected Worker AI image model. Early Access feature; generation availability depends on the model service."},
-   {id:"long-memory",name:"Long-term Memory",state:"WIP",kind:"wip",detail:"Save, review and delete personal notes locally; saved notes can be included as context in future chats on this browser."},
-   {id:"code-studio",name:"Code Studio",state:"WIP",kind:"wip",detail:"Write and save code drafts locally, download them, or ask ORIVANE chat to review and explain code."},
-   {id:"automation-studio",name:"Automation Studio",state:"WIP",kind:"wip",detail:"Create and track local task checklists. It does not control external apps or run background automations."},
-   {id:"operation-studio",name:"Operation Studio",state:"WIP",kind:"wip",detail:"Create named operations with objectives, priority, step checklists and progress tracking. Operations are stored locally; this release does not control external apps or devices."},
+   {id:"long-memory",name:"Long-term Memory",state:"READY",kind:"ready",detail:"Released. Save, review and delete notes stored in this browser; saved notes can be included as context in chats on this device."},
+   {id:"code-studio",name:"Code Studio",state:"READY",kind:"ready",detail:"Released. Write, save, reopen, download and request AI reviews of code drafts. Drafts are stored locally in this browser."},
+   {id:"automation-studio",name:"Automation Studio",state:"READY",kind:"ready",detail:"Released. Create, complete and delete task checklists stored locally. It does not run background automations or control external apps."},
+   {id:"operation-studio",name:"Operation Studio",state:"READY",kind:"ready",detail:"Released. Create named operations with objectives, priority, step checklists and progress tracking. Operations are stored locally; it does not control external apps or devices."},
    {id:"klipy",name:"GIF Studio (KLIPY + AI GIFs)",state:"WIP",kind:"wip",detail:"Available to all members while in development. GIF search and AI GIF creation are experimental; availability also depends on the connected provider."},
    {id:"wipaccess",name:"WIP feature access",state:"WIP",kind:"wip",detail:"Future WIP features will require a verified Early Access entitlement. Existing WIP features remain available to all members."},
    {id:"visitors",name:"Live visitor counter",state:"SOON",kind:"soon",detail:"Needs shared server-side presence storage. A local counter would be misleading, so it is not presented as live."},
