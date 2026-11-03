@@ -124,7 +124,8 @@
   catch(error){if(error.name==="AbortError"){persist("stopped");status.textContent="Planning stopped. No steps were started.";}else{status.textContent=error.message||"Planning failed. Retry the task.";}}finally{active=null;run.disabled=false;run.textContent="⚡ Plan & run";stop.hidden=true;renderHistory();}
  }
  stop.addEventListener("click",()=>{stopRequested=true;if(active?.controller)active.controller.abort();else status.textContent="Will stop after the current operation.";});
- copy.addEventListener("click",async()=>{const text=currentSteps.filter(s=>s.result).map(s=>"# "+s.title+"\n\n"+s.result).join("\n\n");try{await navigator.clipboard.writeText(text);copy.textContent="Copied";setTimeout(()=>copy.textContent="Copy full result",1200);}catch{copy.textContent="Clipboard unavailable";}});
+ clearHistory.addEventListener("click",()=>{if(!read().length)return;if(!confirm("Clear all saved Action Studio task history from this browser?"))return;save([]);activeId=null;renderHistory();});
+ copy.addEventListener("click",async()=>{const text="# "+currentTask+"\\n\\n"+currentSteps.map(s=>"## "+s.title+" ["+s.status+"]\\n\\n"+(s.result||s.error||s.instruction)).join("\\n\\n");try{await navigator.clipboard.writeText(text);copy.textContent="Copied";setTimeout(()=>copy.textContent="Copy full result",1200);}catch{copy.textContent="Clipboard unavailable";}});
  form.addEventListener("submit",execute);function open(){overlay.hidden=false;document.body.classList.add("action-open");$("currentPage").textContent="Action Studio";renderHistory();input.focus();}function shut(){overlay.hidden=true;document.body.classList.remove("action-open");$("currentPage").textContent="Chat";}
  btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});renderHistory();
 })();
