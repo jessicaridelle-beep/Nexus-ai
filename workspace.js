@@ -145,7 +145,7 @@
  const items=[
   {name:"AI chat",state:"READY",kind:"ready",detail:"The chat interface and Worker AI request route are implemented."},
   {name:"Research / web search",state:"WIP",kind:"wip",detail:"The Worker attempts live search, but availability depends on its runtime and provider configuration. Results are not guaranteed."},
-  {name:"Action Studio",state:"WIP",kind:"wip",detail:"Plans up to 6 steps, executes them in sequence, saves local task history, and supports retry/stop. It still prepares results rather than editing files or operating external apps."},
+  {name:"Action Studio",state:"WIP",kind:"wip",detail:"Plans up to 6 steps, executes them in sequence, saves local task history, supports stop/retry, copies results and downloads Markdown reports. It generates deliverables but does not directly edit repository files or operate external apps."},
   {name:"Projects workspace",state:"READY",kind:"ready",detail:"Create projects, save notes and manage tasks locally in this browser."},
   {name:"KLIPY GIF search",state:"WIP",kind:"wip",detail:"The server proxy is coded. A KLIPY server secret must be configured before search can work."},
   {name:"AI GIF creation",state:"SOON",kind:"soon",detail:"The creator interface exists, but no generation provider is connected. Creation is unavailable."},
