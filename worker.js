@@ -159,7 +159,7 @@ export default {
       }
     }
 
-    const publicSiteInfoRead = request.method === "GET" && requestedAction === "site-info" && !origin;
+    const publicSiteInfoRead = request.method === "GET" && ["site-info","health"].includes(requestedAction) && !origin;
     if (origin !== SITE_ORIGIN && !publicSiteInfoRead) return json({ error: "This website is not allowed to use this endpoint." }, 403);
     if (request.method === "GET") {
       const url = new URL(request.url);
