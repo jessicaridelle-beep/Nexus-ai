@@ -7,7 +7,7 @@
  let requestNo=0;
  button.setAttribute("aria-controls","gifPanel");button.setAttribute("aria-expanded","false");
  function show(open){panel.hidden=!open;button.setAttribute("aria-expanded",String(open));if(open){query.focus();load(query.value.trim());}}
- button.addEventListener("click",()=>show(panel.hidden));
+ button.addEventListener("click",()=>{if(panel.hidden)window.orivaneWipGate("GIF Studio",()=>show(true));else show(false);});
  $("closeGif").addEventListener("click",()=>show(false));
  function findItems(data){
    for(const k of ["data","results","gifs","items"]) if(Array.isArray(data?.[k])) return data[k];
