@@ -152,3 +152,30 @@ button{touch-action:manipulation}
  .chat-toolbar button{width:100%}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+
+/* ORIVANE 2.5 — redesigned in-chat GIF picker */
+.gif-picker{width:min(720px,100%);margin:10px auto 14px;padding:18px;border:1px solid #ff9a4544;border-radius:18px;background:var(--panel);box-shadow:0 20px 65px var(--shadow)}
+.gif-picker .gif-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.gif-picker .gif-panel-head b{font:700 17px 'Space Grotesk';letter-spacing:.2px}
+.gif-picker .gif-panel-head small{font-size:11px;color:var(--muted);margin-top:3px}
+.gif-picker #closeGif{width:42px;height:42px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);font-size:23px;color:var(--text)}
+.gif-search-form{display:flex;gap:9px}
+.gif-search-form input{flex:1;min-width:0;height:48px;padding:0 15px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--text);font:13px 'DM Sans'}
+.gif-search-form input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.gif-search-form button{min-width:92px;border:0;border-radius:12px;background:linear-gradient(120deg,var(--accent),var(--accent2));color:#17120e;font-weight:800}
+.gif-categories{display:flex;gap:7px;flex-wrap:wrap;margin:13px 0}
+.gif-categories button{min-height:36px;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel2);color:var(--text);font-size:11px}
+.gif-categories button:hover{border-color:var(--accent);color:var(--accent)}
+.gif-status{min-height:24px;padding:5px 2px;color:var(--muted);font-size:11px}
+.gif-results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;max-height:390px;overflow-y:auto;padding:2px 3px 4px}
+.gif-result{position:relative;display:block;min-width:0;aspect-ratio:1.15;border:1px solid var(--line);border-radius:12px;overflow:hidden;padding:0;background:var(--panel2);cursor:pointer}
+.gif-result img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .18s}
+.gif-result:hover img{transform:scale(1.05)}
+.gif-result span{position:absolute;inset:auto 0 0;padding:14px 5px 7px;background:linear-gradient(transparent,#090b10d9);color:#fff;font-size:11px;font-weight:800;text-align:center;opacity:0;transition:opacity .15s}
+.gif-result:hover span,.gif-result:focus-visible span{opacity:1}
+.gif-result:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+#gifButton[aria-expanded="true"]{border-color:var(--accent);background:#ff8a3220;color:var(--accent)}
+@media(max-width:650px){.gif-results{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:48vh}.gif-picker{padding:12px}.gif-search-form button{min-width:74px}}
+@media(max-width:380px){.gif-results{grid-template-columns:repeat(2,minmax(0,1fr))}.gif-categories{gap:5px}.gif-categories button{font-size:10px;padding:6px 9px}}
