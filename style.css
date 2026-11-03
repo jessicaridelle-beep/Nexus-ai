@@ -444,3 +444,7 @@ body.studio-open,body.workspace-open,body.action-open{overflow:hidden}
 
 /* Operation Studio */
 .studio-operation-card{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.studio-operation-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.studio-operation-top b,.studio-operation-top small{display:block}.studio-operation-top b{font-size:13px}.studio-operation-top small,.studio-operation-meta{font-size:9px;color:var(--muted);margin-top:4px}.studio-operation-count{font-size:11px;font-weight:800;color:var(--accent)}.studio-operation-goal{font-size:11px;line-height:1.6;color:var(--muted);margin:0}.studio-operation-progress{height:6px;border-radius:99px;background:var(--line);overflow:hidden}.studio-operation-progress span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#ff8a32,#ffc16e)}.studio-operation-meta{display:flex;justify-content:space-between;gap:10px;margin:0 0 12px}
+/* Installable app controls */
+#orivaneInstallButton{border-color:#ff9a4566;color:var(--text);white-space:nowrap}
+#orivaneInstallButton[hidden]{display:none!important}
+@media(max-width:600px){#orivaneInstallButton{font-size:11px;padding:8px 10px}}
