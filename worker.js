@@ -4,7 +4,7 @@ const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
 function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin === SITE_ORIGIN ? SITE_ORIGIN : "null",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Vary": "Origin"
   };
@@ -25,6 +25,30 @@ export default {
     });
 
     if (origin !== SITE_ORIGIN) return json({ error: "This website is not allowed to use this endpoint." }, 403);
+    if (request.method === "GET") {
+      const url = new URL(request.url);
+      if (url.searchParams.get("action") !== "gif-search") return json({ error: "Unknown action." }, 404);
+      if (!env.TENOR_API_KEY) return json({ error: "GIF search needs a Tenor API key configured on the ORIVANE Worker." }, 503);
+      const query = (url.searchParams.get("q") || "").trim().slice(0, 80);
+      const endpoint = query
+        ? "https://tenor.googleapis.com/v2/search?q=" + encodeURIComponent(query) + "&key=" + encodeURIComponent(env.TENOR_API_KEY) + "&client_key=orivane&limit=24&media_filter=gif,tinygif"
+        : "https://tenor.googleapis.com/v2/featured?key=" + encodeURIComponent(env.TENOR_API_KEY) + "&client_key=orivane&limit=24&media_filter=gif,tinygif";
+      try {
+        const upstream = await fetch(endpoint);
+        if (!upstream.ok) return json({ error: "Tenor GIF search returned an error (" + upstream.status + ")." }, 502);
+        const data = await upstream.json();
+        const results = (Array.isArray(data.results) ? data.results : []).map((item) => {
+          const media = item.media_formats || {};
+          const gif = media.gif || media.mediumgif || media.tinygif;
+          const preview = media.tinygif || media.nanogif || gif;
+          return gif && gif.url ? { url: gif.url, preview: preview && preview.url ? preview.url : gif.url, description: item.content_description || "GIF" } : null;
+        }).filter(Boolean);
+        return json({ results });
+      } catch {
+        return json({ error: "Couldn't reach Tenor right now. Try again." }, 502);
+      }
+    }
+
     if (request.method !== "POST") return json({ error: "Use POST to send a chat message." }, 405);
 
     try {
