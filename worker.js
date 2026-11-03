@@ -479,6 +479,23 @@ export default {
         return json({ error: error && error.message ? error.message : "The task could not be completed." }, 502);
       }
     }
+    if (requestUrl.searchParams.get("action") === "create-image") {
+      let imageBody;
+      try { imageBody = await request.json(); } catch { return json({ error: "The image prompt must be valid JSON." }, 400); }
+      const prompt = typeof imageBody.prompt === "string" ? imageBody.prompt.trim() : "";
+      if (!prompt || prompt.length > 500) return json({ error: "Enter an image prompt between 1 and 500 characters." }, 400);
+      if (/\\b(?:porn(?:ography)?|nude|naked|sexual|explicit|erotic|genitals|gore|gory|dismember(?:ment)?|beheading|self[- ]?harm|suicide)\\b/i.test(prompt)) return json({ error: "Please use a non-explicit, non-graphic image prompt." }, 422);
+      if (!env.AI || typeof env.AI.run !== "function") return json({ error: "The image-generation service is not connected." }, 503);
+      try {
+        const generated = await env.AI.run(GIF_MODEL, { prompt: "Create one polished, high-quality image. No text, captions, logos or watermarks. Subject: " + prompt, steps: 4 });
+        const image = generated && typeof generated.image === "string" ? generated.image : "";
+        if (!image || image.length > 6000000) return json({ error: "The image model did not return a usable image. Try a simpler prompt." }, 502);
+        return json({ image_data_url: "data:image/jpeg;base64," + image, mime_type: "image/jpeg", model: GIF_MODEL });
+      } catch (error) {
+        console.error("ORIVANE image generation failed:", error && error.message ? error.message : error);
+        return json({ error: "ORIVANE couldn't generate that image just now. Try a shorter or simpler prompt." }, 502);
+      }
+    }
     if (requestUrl.searchParams.get("action") === "create-gif") {
       let createBody;
       try { createBody = await request.json(); }
