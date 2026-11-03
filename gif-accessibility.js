@@ -13,7 +13,7 @@
    }
    if(host==="giphy.com"||host.endsWith(".giphy.com")){
     const parts=u.pathname.split("/").filter(Boolean);
-    const id=parts.reverse().find(x=>/^[a-z0-9]{8,}$/i.test(x));
+    const id=parts.reverse().map(x=>x.match(/([a-z0-9]{8,})$/i)?.[1]).find(Boolean);
     if(id)return {type:"embed",url:"https://giphy.com/embed/"+id,source:u.href};
    }
   }catch{}
