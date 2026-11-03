@@ -129,13 +129,25 @@ export default {
 
 
     const requestedAction = new URL(request.url).searchParams.get("action");
-    const authActions = ["auth-register","auth-login","auth-me","auth-logout","auth-owner-claim"];
+    const authActions = ["auth-register","auth-login","auth-me","auth-logout","auth-owner-claim","early-access-status"];
     if (authActions.includes(requestedAction)) {
       if (!env.DB) return json({error:"Authentication storage is not connected."},503);
-      if (request.method === "GET" && requestedAction !== "auth-me") return json({error:"Use POST for this action."},405);
+      if (request.method === "GET" && !["auth-me","early-access-status"].includes(requestedAction)) return json({error:"Use POST for this action."},405);
       if (request.method === "GET" && requestedAction === "auth-me") {
         const user=await currentUser(request,env.DB);
         return json({authenticated:!!user,user:user?{username:user.username,role:user.role}:null});
+      }
+      if (request.method === "GET" && requestedAction === "early-access-status") {
+        const user=await currentUser(request,env.DB);
+        if (!user) return json({authenticated:false,earlyAccess:false,checkoutReady:false});
+        let earlyAccess=false;
+        try {
+          const entitlement=await env.DB.prepare("SELECT id FROM user_entitlements WHERE user_id=? AND entitlement=? AND status=? LIMIT 1").bind(user.id,"early_access","active").first();
+          earlyAccess=!!entitlement;
+        } catch (error) {
+          console.error("Early Access entitlement lookup failed:",error&&error.message?error.message:error);
+        }
+        return json({authenticated:true,username:user.username,earlyAccess,checkoutReady:false});
       }
       if (request.method !== "POST") return json({error:"Use POST for this action."},405);
       if (requestedAction === "auth-logout") {
