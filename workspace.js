@@ -51,3 +51,41 @@
  }
  render();
 })();
+
+/* ORIVANE plugin hub and dedicated creative navigation */
+(()=>{
+ const $=id=>document.getElementById(id);
+ const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
+ const side=$("sidebar");
+ const pluginsBtn=$("pluginsOpen"), gifBtn=$("gifStudioOpen");
+ if(!side||!pluginsBtn||!gifBtn)return;
+ const KEY="orivane-plugin-settings-v1";
+ const catalog=[
+  {id:"klipy",name:"KLIPY GIF Search",kind:"Media",desc:"Search and share existing animated GIFs. Requires a KLIPY key on the server.",status:"API setup required",available:true},
+  {id:"gif-create",name:"AI GIF Creator",kind:"Creative",desc:"Prompt-to-animation workflow with preview and Add to chat. An image-generation provider is still needed.",status:"Generator not connected",available:false},
+  {id:"research",name:"Research Mode",kind:"Research",desc:"Ask ORIVANE to use live web search when the Worker has web search configured.",status:"Built-in · provider dependent",available:true},
+  {id:"study",name:"Study Mode",kind:"Learning",desc:"Step-by-step explanations, examples and recap prompts.",status:"Built-in",available:true},
+  {id:"voice",name:"Voice Typing",kind:"Accessibility",desc:"Dictate messages using browser speech recognition where supported.",status:"Built-in · browser dependent",available:true},
+  {id:"projects",name:"Projects Workspace",kind:"Productivity",desc:"Keep project goals, notes and task lists together on this device.",status:"Built-in",available:true}
+ ];
+ const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch{return {}}};
+ const save=x=>localStorage.setItem(KEY,JSON.stringify(x));
+ const overlay=el("div","plugin-overlay");overlay.id="pluginHub";overlay.hidden=true;
+ const modal=el("section","plugin-modal");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","pluginHubTitle");
+ const head=el("div","plugin-head"),titles=el("div","");titles.append(el("div","plugin-eyebrow","ORIVANE EXTENSIONS"),el("h2","","Plugin hub"),el("p","","Manage the tools and integrations available in your workspace."));
+ const close=el("button","plugin-close","×");close.type="button";close.setAttribute("aria-label","Close plugin hub");head.append(titles,close);
+ const grid=el("div","plugin-grid");
+ const note=el("p","plugin-footnote","Plugin switches are saved in this browser. Enabling a switch does not create missing API access or configure external services.");
+ modal.append(head,grid,note);overlay.append(modal);document.body.append(overlay);
+ function render(){grid.replaceChildren();const settings=read();catalog.forEach(p=>{
+  const card=el("article","plugin-card");const top=el("div","plugin-card-top");top.append(el("span","plugin-kind",p.kind),el("span","plugin-indicator",p.available?"Available":"Setup needed"));
+  const name=el("h3","",p.name),desc=el("p","",p.desc),status=el("small","plugin-status",p.status);
+  const row=el("div","plugin-toggle-row"),label=el("label","plugin-toggle-label","Enable in workspace"),toggle=el("input");toggle.type="checkbox";toggle.checked=settings[p.id]!==false&&p.available;toggle.disabled=!p.available;toggle.addEventListener("change",()=>{const next=read();next[p.id]=toggle.checked;save(next);});
+  row.append(label,toggle);card.append(top,name,desc,status,row);grid.append(card);
+ });}
+ function open(){render();overlay.hidden=false;document.body.classList.add("plugin-hub-open");close.focus();}
+ function shut(){overlay.hidden=true;document.body.classList.remove("plugin-hub-open");}
+ pluginsBtn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
+ gifBtn.addEventListener("click",()=>{const trigger=$("gifButton");if(!trigger)return;trigger.click();setTimeout(()=>{$("openGifCreator")?.click();},0);});
+})();
