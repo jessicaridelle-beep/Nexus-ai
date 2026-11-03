@@ -1,7 +1,7 @@
 (()=>{
  const button=document.createElement("button");
  button.type="button";button.id="orivaneInstallButton";button.className="header-action";
- button.textContent="↓ Install app";button.hidden=true;
+ button.textContent="↓ Install app";button.hidden=false;
  const top=document.querySelector(".top-right");
  if(top)top.prepend(button);
  let installPrompt=null;
