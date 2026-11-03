@@ -121,3 +121,38 @@
  function shut(){overlay.hidden=true;document.body.classList.remove("action-open");$("currentPage").textContent="Chat";}
  btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
 })();
+
+
+/* ORIVANE system status, CEO access and live visitor UI */
+(()=>{
+ const $=id=>document.getElementById(id);
+ const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
+ const side=$("sidebar");if(!side)return;
+ const btn=el("button","side-link","◉ System status");btn.type="button";btn.id="systemStatusOpen";
+ const anchor=$("pluginsOpen");if(anchor)anchor.insertAdjacentElement("afterend",btn);
+ const overlay=el("div","status-overlay");overlay.id="systemStatus";overlay.hidden=true;
+ const modal=el("section","status-modal");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","statusTitle");
+ const head=el("div","status-head"),titles=el("div","");
+ titles.append(el("div","status-eyebrow","ORIVANE CONTROL CENTRE"),el("h2","","System status"),el("p","","A transparent view of what works, what is being built, and what is not connected yet."));
+ const close=el("button","workspace-close","×");close.type="button";close.setAttribute("aria-label","Close status");head.append(titles,close);
+ const grid=el("div","status-grid");
+ const items=[
+  {name:"AI chat",state:"READY",kind:"ready",detail:"The chat interface and Worker AI request route are implemented."},
+  {name:"Research / web search",state:"WIP",kind:"wip",detail:"The Worker attempts live search, but availability depends on its runtime and provider configuration. Results are not guaranteed."},
+  {name:"Action Studio",state:"WIP",kind:"wip",detail:"Runs a separate AI task and returns a draft result. It does not independently edit files or operate external apps."},
+  {name:"Projects workspace",state:"READY",kind:"ready",detail:"Create projects, save notes and manage tasks locally in this browser."},
+  {name:"KLIPY GIF search",state:"WIP",kind:"wip",detail:"The server proxy is coded. A KLIPY server secret must be configured before search can work."},
+  {name:"AI GIF creation",state:"SOON",kind:"soon",detail:"The creator interface exists, but no generation provider is connected. Creation is unavailable."},
+  {name:"Live visitor counter",state:"SOON",kind:"soon",detail:"No shared presence service or live visitor database is connected yet."},
+  {name:"CEO access",state:"SOON",kind:"soon",detail:"Secure CEO authentication is not implemented. No visitor is granted administrator privileges."},
+  {name:"Device + ChatGPT account check",state:"SOON",kind:"soon",detail:"A normal website link cannot prove which ChatGPT account opened it. This requires a supported, verifiable identity handoff; none is connected."},
+  {name:"Profile sign-in",state:"SOON",kind:"soon",detail:"The current profile only saves a display name locally. Password and Google sign-in are not active."}
+ ];
+ items.forEach(item=>{const card=el("article","status-card");const top=el("div","status-card-top");top.append(el("b","",item.name),el("span","status-pill "+item.kind,item.state));card.append(top,el("p","",item.detail));grid.append(card);});
+ const security=el("section","status-security");security.append(el("h3","","CEO security gate"),el("p","","CEO access is currently disabled. Requests made from this site are denied until a real authentication system is configured and independently verified."),el("div","status-denied","CEO ACCESS: DENIED · AUTHENTICATION NOT CONFIGURED"),el("small","","Do not enter passwords, recovery codes, or private account details here. This page does not collect them."));
+ const footer=el("p","status-footer","Status labels: READY = usable feature · WIP = coded but incomplete or provider-dependent · SOON = not yet usable.");
+ modal.append(head,grid,security,footer);overlay.append(modal);document.body.append(overlay);
+ function open(){overlay.hidden=false;document.body.classList.add("status-open");$("currentPage").textContent="System status";close.focus();}
+ function shut(){overlay.hidden=true;document.body.classList.remove("status-open");$("currentPage").textContent="Chat";}
+ btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
+})();
