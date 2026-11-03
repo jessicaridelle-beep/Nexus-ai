@@ -163,8 +163,9 @@ export default {
 
     // Serve the GitHub Pages frontend from this same Worker origin so account cookies and API calls are first-party.
     if (!requestedAction && (request.method === "GET" || request.method === "HEAD")) {
-      const upstreamPath = incomingUrl.pathname === "/" ? "/Nexus-ai/" : "/Nexus-ai" + incomingUrl.pathname;
-      const upstreamUrl = new URL(upstreamPath + incomingUrl.search, "https://jessicaridelle-beep.github.io");
+      const upstreamUrl = incomingUrl.pathname === "/"
+        ? new URL("https://raw.githubusercontent.com/" + PROJECT_REPO + "/main/index.html")
+        : new URL("/Nexus-ai" + incomingUrl.pathname + incomingUrl.search, "https://jessicaridelle-beep.github.io");
       try {
         const upstream = await fetch(upstreamUrl.toString(), { method: request.method, headers: { "Accept": request.headers.get("Accept") || "*/*" } });
         const responseHeaders = new Headers(upstream.headers);
