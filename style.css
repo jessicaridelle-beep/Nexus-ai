@@ -107,3 +107,48 @@
 .prompt-library-item .prompt-use{flex:1;text-align:left;overflow-wrap:anywhere}
 .prompt-library-item button:last-child{color:var(--accent);font-size:10px}
 @media(max-width:700px){.chat-toolbar{justify-content:center}.chat-toolbar button{font-size:9px;padding:7px}.chat-history{max-height:22vh}}
+
+
+/* ORIVANE 2.4 — clearer controls, keyboard focus and mobile touch targets */
+:where(button,a,input,textarea,select):focus-visible{outline:3px solid var(--accent2);outline-offset:3px}
+button{touch-action:manipulation}
+.composer-tools{display:flex;align-items:center;gap:8px}
+.composer-tools .tool-button,.composer-tools button[type="submit"]{min-width:44px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:11px;font-size:12px;font-weight:700}
+.composer-tools .tool-button{background:var(--panel2);color:var(--text)}
+.composer-tools .tool-button:hover,.composer-tools .tool-button:focus-visible{border-color:var(--accent);background:#ff8a3218}
+.composer-tools .memory-on{border-color:#ff8a3280;color:var(--accent)}
+.composer-tools button[type="submit"]{width:48px;height:44px;background:linear-gradient(130deg,var(--accent),var(--accent2));color:#17120d;font-size:23px}
+.header-action,.chat-toolbar button,.gif-panel button,.sidebar-bottom button,.side-link,.new-chat,.suggestion{min-height:44px}
+.gif-panel{z-index:4;position:relative;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:16px;margin:0 0 12px;box-shadow:0 18px 50px var(--shadow)}
+.gif-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.gif-panel-head b{display:block;font-size:14px}.gif-panel-head small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.gif-panel-head button{width:44px;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:22px}
+#gifForm,.gif-url-row{display:flex;gap:8px}
+#gifForm input,.gif-url-row input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--text);font:inherit}
+#gifForm button,.gif-url-row button,.gif-panel-actions button{border:1px solid #ff8a3270;border-radius:10px;background:#ff8a3218;color:var(--text);padding:10px 14px;font-weight:700}
+.gif-shortcuts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.gif-shortcuts button{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:8px 12px;color:var(--text)}
+.gif-url-label{display:block;font-size:11px;color:var(--muted);margin:12px 0 6px}
+.gif-preview{display:grid;gap:10px;margin:12px 0;padding:10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gif-preview img,.gif-preview video{display:block;max-width:100%;max-height:280px;object-fit:contain;border-radius:9px}
+.gif-preview iframe{width:100%;min-height:220px;border:0;border-radius:9px}
+.gif-preview a,.gif-embed-card a{display:inline-flex;align-items:center;min-height:40px;color:var(--accent2);font-size:12px;text-decoration:underline}
+.gif-panel-actions{display:flex;gap:9px;justify-content:flex-end}
+.gif-panel-actions button{min-height:44px}
+.gif-panel p{font-size:11px;line-height:1.6;color:var(--muted)}
+.chat-gif{display:block;max-width:min(100%,420px);max-height:320px;object-fit:contain;border-radius:12px;margin-top:9px}
+.gif-embed-card{display:grid;gap:6px;width:min(100%,420px);margin-top:8px}
+.gif-embed-card iframe{display:block;width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:var(--panel2)}
+.chat-toolbar button{padding:9px 13px;font-weight:600}
+.side-link:focus-visible,.suggestion:focus-visible{outline-offset:2px}
+@media(max-width:560px){
+ .composer-tools{gap:5px}.composer-tools .tool-button{min-width:42px;padding:0 9px;font-size:11px}
+ .composer-bottom{align-items:flex-end;gap:8px}.composer-bottom>span{max-width:100px;line-height:1.4}
+ .chat-shell{padding-left:14px;padding-right:14px}
+ #gifForm,.gif-url-row{flex-direction:column}
+ #gifForm button,.gif-url-row button{width:100%}
+ .gif-panel{padding:12px}
+ .chat-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .chat-toolbar button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
