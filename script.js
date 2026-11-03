@@ -81,7 +81,7 @@ document.getElementById("voiceInput")?.addEventListener("click",()=>{
  try{recognition.start();}catch{b.classList.remove("mode-active");chatNote.textContent="Voice input couldn't start. Try again.";}
 });
 
-/* ORIVANE Early Access UI — fail closed until server-verified payment is configured */
+/* ORIVANE Early Access UI — checkout opens only when server secrets are configured */
 (()=>{
  const overlay=document.getElementById("earlyAccessOverlay");
  const open=document.getElementById("earlyAccessOpen");
@@ -90,21 +90,47 @@ document.getElementById("voiceInput")?.addEventListener("click",()=>{
  const status=document.getElementById("earlyAccessAccountStatus");
  if(!overlay||!open||!close||!buy||!status)return;
  const api="https://nexus-ai-api.jessicaridelle.workers.dev/";
+ const returned=new URLSearchParams(location.search).get("early_access");
  function show(){overlay.hidden=false;document.body.style.overflow="hidden";refresh();}
  function hide(){overlay.hidden=true;document.body.style.overflow="";}
  async function refresh(){
   status.textContent="Checking secure account and purchase status…";
-  buy.disabled=true;buy.textContent="Checkout not configured yet";
+  buy.disabled=true;buy.textContent="Checking checkout…";
   try{
    const r=await fetch(api+"?action=early-access-status",{credentials:"include",cache:"no-store"});
    const d=await r.json();
    if(!r.ok)throw new Error(d.error||"Status unavailable.");
    status.textContent=d.authenticated?(d.earlyAccess?"✓ Early Access is active on this account.":"Signed in as "+d.username+". No verified Early Access purchase is linked to this account."):"Sign in to link Early Access to your ORIVANE account.";
-   if(d.checkoutReady){buy.disabled=!d.authenticated||d.earlyAccess;buy.textContent=d.earlyAccess?"Early Access unlocked":"Get Early Access · €0.99";}
-  }catch{status.textContent="Secure purchase verification is not configured yet. No payment can be made at this time.";}
+   if(returned==="success"&&!d.earlyAccess)status.textContent="Stripe returned you successfully. Waiting for the secure payment confirmation to activate Early Access — refresh in a moment.";
+   if(d.checkoutReady){
+    buy.disabled=!d.authenticated||d.earlyAccess;
+    buy.textContent=d.earlyAccess?"Early Access unlocked":"Get Early Access · €0.99";
+   }else{
+    buy.disabled=true;buy.textContent="Checkout not configured yet";
+   }
+  }catch{
+   status.textContent="Secure purchase verification is not available right now. No payment status could be confirmed.";
+   buy.disabled=true;buy.textContent="Checkout unavailable";
+  }
+ }
+ async function startCheckout(){
+  if(buy.disabled)return;
+  buy.disabled=true;buy.textContent="Opening secure checkout…";
+  status.textContent="Creating your secure Stripe Checkout session…";
+  try{
+   const r=await fetch(api+"?action=early-access-checkout",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:"{}"});
+   const d=await r.json();
+   if(!r.ok||!d.checkoutUrl)throw new Error(d.error||"Checkout couldn't be started.");
+   location.assign(d.checkoutUrl);
+  }catch(error){
+   status.textContent=error&&error.message?error.message:"Checkout couldn't be started. Try again.";
+   buy.disabled=false;buy.textContent="Try checkout again · €0.99";
+  }
  }
  open.addEventListener("click",show);close.addEventListener("click",hide);
+ buy.addEventListener("click",startCheckout);
  overlay.addEventListener("click",e=>{if(e.target===overlay)hide();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)hide();});
  window.orivaneEarlyAccess={refresh,hasAccess:async()=>{try{const r=await fetch(api+"?action=early-access-status",{credentials:"include",cache:"no-store"});const d=await r.json();return !!(r.ok&&d.earlyAccess===true);}catch{return false;}}};
+ if(returned==="success"||returned==="cancelled")show();
 })();
