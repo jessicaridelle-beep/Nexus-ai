@@ -7,7 +7,7 @@
  let requestNo=0;
  button.setAttribute("aria-controls","gifPanel");button.setAttribute("aria-expanded","false");
  function show(open){panel.hidden=!open;button.setAttribute("aria-expanded",String(open));if(open){query.focus();load(query.value.trim());}}
- button.addEventListener("click",()=>{if(panel.hidden)window.orivaneWipGate("GIF Studio",()=>show(true));else show(false);});
+ button.addEventListener("click",()=>show(panel.hidden));
  $("closeGif").addEventListener("click",()=>show(false));
  function findItems(data){
    for(const k of ["data","results","gifs","items"]) if(Array.isArray(data?.[k])) return data[k];
@@ -159,5 +159,5 @@
  form.addEventListener("submit",e=>{e.preventDefault();load(query.value.trim());});
  panel.querySelectorAll("[data-gif-search]").forEach(b=>b.addEventListener("click",()=>{query.value=b.dataset.gifSearch;load(query.value);}));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden)show(false);});
- // GIF requests start only after the Early Access gate grants entry.
+ // GIF search loads when any member opens the existing WIP Studio.
 })();
