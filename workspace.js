@@ -27,8 +27,8 @@
  const list=el("div","workspace-grid");
  const editor=el("div","project-editor");editor.hidden=true;
  modal.append(head,intro,actions,list,editor);overlay.append(modal);document.body.append(overlay);
- function closeWorkspace(){overlay.hidden=true;editor.hidden=true;active=null;document.body.classList.remove("workspace-open");}
- function openWorkspace(){overlay.hidden=false;document.body.classList.add("workspace-open");render();close.focus();}
+ function closeWorkspace(){overlay.hidden=true;editor.hidden=true;list.hidden=false;actions.hidden=false;intro.hidden=false;active=null;document.body.classList.remove("workspace-open");$("currentPage").textContent="Chat";}
+ function openWorkspace(){overlay.hidden=false;document.body.classList.add("workspace-open");$("currentPage").textContent="Projects";render();close.focus();}
  close.addEventListener("click",closeWorkspace);overlay.addEventListener("click",e=>{if(e.target===overlay)closeWorkspace();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)closeWorkspace();});
  $("projectsOpen")?.addEventListener("click",openWorkspace);
