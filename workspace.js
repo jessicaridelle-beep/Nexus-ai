@@ -89,3 +89,35 @@
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
  gifBtn.addEventListener("click",()=>{const trigger=$("gifButton");if(!trigger)return;trigger.click();setTimeout(()=>{$("openGifCreator")?.click();},0);});
 })();
+
+
+/* ORIVANE Action Studio — task-first workspace, separate from chat */
+(()=>{
+ const $=id=>document.getElementById(id);
+ const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
+ const sidebar=$("sidebar"); if(!sidebar)return;
+ const btn=el("button","side-link","⚡ Action Studio");btn.type="button";btn.id="actionStudioOpen";
+ const anchor=$("projectsOpen");if(anchor)anchor.insertAdjacentElement("afterend",btn);
+ const overlay=el("div","action-overlay");overlay.id="actionStudio";overlay.hidden=true;
+ const modal=el("section","action-modal");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","actionStudioTitle");
+ const head=el("div","action-head"),titles=el("div","");
+ titles.append(el("div","action-eyebrow","TASK-FIRST WORKSPACE"),el("h2","","Action Studio"),el("p","","Give ORIVANE a task. Get a result without sending a chat message."));
+ const close=el("button","workspace-close","×");close.type="button";close.setAttribute("aria-label","Close Action Studio");head.append(titles,close);
+ const form=el("form","action-form"),label=el("label","","What should ORIVANE do?");label.htmlFor="actionTaskInput";
+ const input=el("textarea","");input.id="actionTaskInput";input.rows=5;input.maxLength=4000;input.placeholder="Example: Create a polished landing page for a space exploration club…";input.required=true;
+ const controls=el("div","action-controls"),run=el("button","workspace-primary","⚡ Run task");run.type="submit";const hint=el("small","action-hint","Runs separately from chat. Results are prepared for review; external changes are not made.");controls.append(hint,run);form.append(label,input,controls);
+ const status=el("div","action-status","Ready when you are.");status.setAttribute("role","status");
+ const result=el("section","action-result");result.hidden=true;result.append(el("h3","","Task result"));const output=el("pre","action-output");result.append(output);
+ const copy=el("button","workspace-secondary","Copy result");copy.type="button";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(output.textContent);copy.textContent="Copied";setTimeout(()=>copy.textContent="Copy result",1200);}catch{copy.textContent="Clipboard unavailable";}});
+ result.append(copy);
+ modal.append(head,form,status,result);overlay.append(modal);document.body.append(overlay);
+ async function execute(e){e.preventDefault();const task=input.value.trim();if(!task)return;run.disabled=true;run.textContent="Working…";status.textContent="Running your task…";result.hidden=true;
+  try{const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=run-task",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task})});let data;try{data=await response.json();}catch{throw new Error("The task service returned an unreadable response.");}if(!response.ok)throw new Error(data.error||"The task could not be completed.");output.textContent=data.result;result.hidden=false;status.textContent="Task completed. Review the result below before using it.";}
+  catch(err){status.textContent=err.message||"Task failed. Try again.";}
+  finally{run.disabled=false;run.textContent="⚡ Run task";}
+ }
+ form.addEventListener("submit",execute);
+ function open(){overlay.hidden=false;document.body.classList.add("action-open");$("currentPage").textContent="Action Studio";input.focus();}
+ function shut(){overlay.hidden=true;document.body.classList.remove("action-open");$("currentPage").textContent="Chat";}
+ btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
+})();
