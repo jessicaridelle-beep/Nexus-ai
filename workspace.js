@@ -152,9 +152,10 @@
    {id:"klipy",name:"KLIPY GIF search",state:"WIP",kind:"wip",detail:"The server proxy is implemented. It becomes usable when the KLIPY server key is configured."},
    {id:"gif",name:"AI GIF creation",state:"SOON",kind:"soon",detail:"The interface is present, but no connected GIF-generation provider exists yet. A local video-to-GIF fallback needs to be built and tested."},
    {id:"visitors",name:"Live visitor counter",state:"SOON",kind:"soon",detail:"Needs shared server-side presence storage. A local counter would be misleading, so it is not presented as live."},
-   {id:"ceo",name:"Secure owner access",state:"SOON",kind:"soon",detail:"Requires server-verified authentication and role checks. The site deliberately grants no admin access based on a username or browser setting."},
+   {id:"ceo",name:"Secure owner access",state:"WIP",kind:"wip",detail:"JR is reserved and cannot be registered publicly. The owner setup code still needs to be configured before the JR account can be claimed."},
    {id:"passkey",name:"Device-bound verification",state:"SOON",kind:"soon",detail:"Requires a complete WebAuthn/passkey flow, server challenge storage and independent security testing."},
-   {id:"profile",name:"Profile sign-in",state:"SOON",kind:"soon",detail:"Profile names are local only. Password and Google sign-in need a trusted authentication provider."}
+   {id:"profile",name:"Username + password accounts",state:"WIP",kind:"wip",detail:"Server-side password hashing, protected sessions and a shared account database are installed. JR remains reserved until owner setup is configured."},
+   {id:"google",name:"Google sign-in shortcut",state:"SOON",kind:"soon",detail:"The button is waiting for Google OAuth client credentials and a registered callback URL."}
   ];
   const cards=new Map();
   items.forEach(item=>{const card=el("article","status-card");const top=el("div","status-card-top");const title=el("b","",item.name),pill=el("span","status-pill "+item.kind,item.state),detail=el("p","",item.detail);top.append(title,pill);card.append(top,detail);grid.append(card);cards.set(item.id,{pill,detail});});
@@ -168,6 +169,9 @@
     set("chat",s.aiChat?"READY":"WIP",s.aiChat?"ready":"wip",s.aiChat?"Worker AI binding detected.":"Worker AI binding is not configured.");
     set("research",s.webSearch?"WIP":"SOON",s.webSearch?"wip":"soon",s.webSearch?"Search method is exposed by the Worker runtime; actual search requests still need reliability testing.":"This Worker runtime does not expose the live web-search method.");
     set("klipy",s.klipy?"READY":"WIP",s.klipy?"ready":"wip",s.klipy?"KLIPY server key detected; provider requests can be attempted.":"Proxy is coded; configure the KLIPY server key to enable searches.");
+    set("profile",s.secureAuth?"WIP":"SOON",s.secureAuth?"wip":"soon",s.secureAuth?"D1 account storage and password/session endpoints are deployed. JR owner setup remains locked until its private setup secret is configured.":"Secure account storage is not connected.");
+    set("ceo",s.ownerClaimConfigured?"WIP":"SOON",s.ownerClaimConfigured?"wip":"soon",s.ownerClaimConfigured?"The private JR owner-claim setup is configured; role-gated owner tools still need implementation.":"JR is reserved. A private owner-claim secret must be configured before it can be claimed.");
+    set("google",s.googleOAuth?"WIP":"SOON",s.googleOAuth?"wip":"soon",s.googleOAuth?"Google OAuth credentials are detected; callback flow still needs verification.":"Google OAuth client ID and secret are not configured.");
     statusNote.textContent="Configuration checked at "+new Date(data.checkedAt||Date.now()).toLocaleTimeString()+". A detected key or binding does not guarantee upstream service uptime.";
    }catch{statusNote.textContent="Live status check failed. Showing the last known feature notes; this does not mean every service is offline.";}
   }
