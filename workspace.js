@@ -61,9 +61,9 @@
  if(!side||!pluginsBtn||!gifBtn)return;
  const KEY="orivane-plugin-settings-v1";
  const catalog=[
-  {id:"klipy",name:"KLIPY GIF Search",kind:"Media",desc:"Search and share existing animated GIFs. Requires a KLIPY key on the server.",status:"API setup required",available:true},
-  {id:"gif-create",name:"AI GIF Creator",kind:"Creative",desc:"Prompt-to-animation workflow with preview and Add to chat. An image-generation provider is still needed.",status:"Generator not connected",available:false},
-  {id:"research",name:"Research Mode",kind:"Research",desc:"Ask ORIVANE to use live web search when the Worker has web search configured.",status:"Built-in · provider dependent",available:true},
+  {id:"klipy",name:"KLIPY GIF Search",kind:"Media",desc:"Search and share existing animated GIFs. WIP feature restricted to verified Early Access members; also requires the KLIPY server key.",status:"WIP · Early Access · API key required",available:true},
+  {id:"gif-create",name:"AI GIF Creator",kind:"Creative",desc:"Create a looping GIF from a prompt, preview it, download it or add it to chat. Experimental WIP feature for verified Early Access members.",status:"WIP · Early Access",available:true},
+  {id:"research",name:"Research Mode",kind:"Research",desc:"Experimental live-source research. WIP feature restricted to verified Early Access members.",status:"WIP · Early Access · provider dependent",available:true},
   {id:"study",name:"Study Mode",kind:"Learning",desc:"Step-by-step explanations, examples and recap prompts.",status:"Built-in",available:true},
   {id:"voice",name:"Voice Typing",kind:"Accessibility",desc:"Dictate messages using browser speech recognition where supported.",status:"Built-in · browser dependent",available:true},
   {id:"projects",name:"Projects Workspace",kind:"Productivity",desc:"Keep project goals, notes and task lists together on this device.",status:"Built-in",available:true}
@@ -78,7 +78,7 @@
  const note=el("p","plugin-footnote","Plugin switches are saved in this browser. Enabling a switch does not create missing API access or configure external services.");
  modal.append(head,grid,note);overlay.append(modal);document.body.append(overlay);
  function render(){grid.replaceChildren();const settings=read();catalog.forEach(p=>{
-  const card=el("article","plugin-card");const top=el("div","plugin-card-top");top.append(el("span","plugin-kind",p.kind),el("span","plugin-indicator",p.available?"Available":"Setup needed"));
+  const card=el("article","plugin-card");const top=el("div","plugin-card-top");top.append(el("span","plugin-kind",p.kind),el("span","plugin-indicator",["klipy","gif-create","research"].includes(p.id)?"WIP · Early Access":p.available?"Available":"Setup needed"));
   const name=el("h3","",p.name),desc=el("p","",p.desc),status=el("small","plugin-status",p.status);
   const row=el("div","plugin-toggle-row"),label=el("label","plugin-toggle-label","Enable in workspace"),toggle=el("input");toggle.type="checkbox";toggle.checked=settings[p.id]!==false&&p.available;toggle.disabled=!p.available;toggle.addEventListener("change",()=>{const next=read();next[p.id]=toggle.checked;save(next);});
   row.append(label,toggle);card.append(top,name,desc,status,row);grid.append(card);
