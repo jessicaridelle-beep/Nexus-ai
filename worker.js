@@ -69,7 +69,9 @@ export default {
       headers: { ...headers, "Content-Type": "application/json; charset=utf-8" }
     });
 
-    if (origin !== SITE_ORIGIN) return json({ error: "This website is not allowed to use this endpoint." }, 403);
+    const requestedAction = new URL(request.url).searchParams.get("action");
+    const publicSiteInfoRead = request.method === "GET" && requestedAction === "site-info" && !origin;
+    if (origin !== SITE_ORIGIN && !publicSiteInfoRead) return json({ error: "This website is not allowed to use this endpoint." }, 403);
     if (request.method === "GET") {
       const url = new URL(request.url);
       const action = url.searchParams.get("action");
