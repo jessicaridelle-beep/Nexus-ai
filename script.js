@@ -69,7 +69,7 @@ const savedProfile=localStorage.getItem(PROFILE_KEY);if(savedProfile)document.ge
 /* ORIVANE power tools */
 const researchButton=document.getElementById("researchMode"),studyButton=document.getElementById("studyMode");
 function setMode(button,on,label){button.setAttribute("aria-pressed",String(on));button.classList.toggle("mode-active",on);button.classList.toggle("tool-card-active",on);button.title=label+(on?" is enabled":" is disabled");}
-researchButton?.addEventListener("click",()=>{researchEnabled=!researchEnabled;setMode(researchButton,researchEnabled,"⌕ Research");chatNote.textContent=researchEnabled?"Research mode on: this message will request live web search when available.":"Research mode off.";});
+researchButton?.addEventListener("click",()=>window.orivaneWipGate("Research Mode",()=>{researchEnabled=!researchEnabled;setMode(researchButton,researchEnabled,"⌕ Research");chatNote.textContent=researchEnabled?"Research mode on: this message will request live web search when available.":"Research mode off.";}));
 studyButton?.addEventListener("click",()=>{studyEnabled=!studyEnabled;setMode(studyButton,studyEnabled,"▤ Study");chatNote.textContent=studyEnabled?"Study mode on: explanations will be step-by-step with examples and a recap.":"Study mode off.";});
 document.getElementById("commandPaletteOpen")?.addEventListener("click",()=>openDialog("commandPaletteOverlay"));
 document.querySelectorAll("[data-command]").forEach(b=>b.addEventListener("click",()=>{const prefix=b.dataset.command;input.value=(input.value.trim()?input.value.trim()+"\n\n":"")+prefix;input.focus();input.dispatchEvent(new Event("input"));closeDialog("commandPaletteOverlay");}));
@@ -86,6 +86,39 @@ document.getElementById("voiceInput")?.addEventListener("click",()=>{
  try{recognition.start();}catch{b.classList.remove("mode-active");chatNote.textContent="Voice input couldn't start. Try again.";}
 });
 
+/* ORIVANE WIP access gate — verified against the server-side Early Access entitlement */
+(()=>{
+ const API="https://nexus-ai-api.jessicaridelle.workers.dev/";
+ let gateOverlay=null,gateFeature=null;
+ function buildGate(){
+  if(gateOverlay)return;
+  const overlay=document.createElement("div");overlay.className="wip-access-overlay";overlay.id="wipAccessOverlay";overlay.hidden=true;
+  const modal=document.createElement("section");modal.className="wip-access-modal";modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","wipAccessTitle");
+  const close=document.createElement("button");close.type="button";close.className="wip-access-close";close.setAttribute("aria-label","Close");close.textContent="×";
+  const mark=document.createElement("div");mark.className="wip-access-mark";mark.textContent="⚙";
+  const eyebrow=document.createElement("span");eyebrow.className="early-access-kicker";eyebrow.textContent="ORIVANE · EXPERIMENTAL FEATURE";
+  const title=document.createElement("h2");title.id="wipAccessTitle";title.textContent="Work in Progress";
+  const message=document.createElement("p");message.className="wip-access-message";
+  const note=document.createElement("p");note.className="wip-access-note";note.textContent="This feature is still being built and may contain bugs or incomplete parts. Early Access lets you try WIP features before their public release.";
+  const buy=document.createElement("button");buy.type="button";buy.className="early-access-buy";buy.textContent="Get Early Access · €0.99";
+  const foot=document.createElement("small");foot.className="wip-access-foot";foot.textContent="One-time payment · No subscription · Features may become public later.";
+  const hide=()=>{overlay.hidden=true;document.body.style.overflow="";};
+  close.addEventListener("click",hide);overlay.addEventListener("click",e=>{if(e.target===overlay)hide();});
+  buy.addEventListener("click",()=>{hide();document.getElementById("earlyAccessOpen")?.click();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)hide();});
+  modal.append(close,mark,eyebrow,title,message,note,buy,foot);overlay.append(modal);document.body.append(overlay);gateOverlay=overlay;gateFeature=message;
+ }
+ window.orivaneWipGate=async function(feature,onGranted){
+  try{
+   const response=await fetch(API+"?action=early-access-status",{credentials:"include",cache:"no-store"});
+   const data=await response.json();
+   if(response.ok&&data.earlyAccess===true){if(typeof onGranted==="function")onGranted();return true;}
+  }catch(error){console.warn("ORIVANE WIP access check unavailable:",error);}
+  buildGate();gateFeature.textContent=(feature||"This feature")+" is currently in Work in Progress and is available only to verified Early Access members.";
+  gateOverlay.hidden=false;document.body.style.overflow="hidden";return false;
+ };
+})();
+ 
 /* ORIVANE Early Access UI — checkout opens only when server secrets are configured */
 (()=>{
  const overlay=document.getElementById("earlyAccessOverlay");
