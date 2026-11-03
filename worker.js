@@ -1,10 +1,10 @@
-const SITE_ORIGIN = "https://jessicaridelle-beep.github.io";
+const SITE_ORIGIN = "https://nexus-ai-api.jessicaridelle.workers.dev";
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
 const GIF_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const ORIVANE_VERSION = "2026.11.03";
 
 const PROJECT_REPO = "jessicaridelle-beep/Nexus-ai";
-const PROJECT_SITE = "https://jessicaridelle-beep.github.io/Nexus-ai/";
+const PROJECT_SITE = "https://nexus-ai-api.jessicaridelle.workers.dev/";
 const PUBLIC_SOURCE_FILES = ["index.html","style.css","script.js","worker.js","features.js","workspace.js","gif-picker.js","gif-accessibility.js"];
 
 async function readPublicProjectFile(path) {
@@ -68,7 +68,7 @@ async function issueSession(db,userId) {
  await db.prepare("INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)").bind(tokenHash,userId,now+SESSION_SECONDS,now).run();
  return token;
 }
-function cookieHeader(token,maxAge=SESSION_SECONDS) { return AUTH_COOKIE+"="+token+"; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age="+maxAge; }
+function cookieHeader(token,maxAge=SESSION_SECONDS) { return AUTH_COOKIE+"="+token+"; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age="+maxAge; }
 function readCookie(request,name) {
  const raw=request.headers.get("Cookie")||"";
  for(const part of raw.split(";")) { const i=part.indexOf("="); if(i>0&&part.slice(0,i).trim()===name) return part.slice(i+1).trim(); }
@@ -124,7 +124,7 @@ async function verifyStripeSignature(rawBody, signatureHeader, secret) {
 function isAllowedSiteOrigin(origin) {
   try {
     const parsed = new URL(origin);
-    return parsed.protocol === "https:" && parsed.hostname === "jessicaridelle-beep.github.io";
+    return parsed.protocol === "https:" && (parsed.hostname === "nexus-ai-api.jessicaridelle.workers.dev" || parsed.hostname === "jessicaridelle-beep.github.io");
   } catch {
     return false;
   }
@@ -158,7 +158,26 @@ export default {
     });
 
 
-    const requestedAction = new URL(request.url).searchParams.get("action");
+    const incomingUrl = new URL(request.url);
+    const requestedAction = incomingUrl.searchParams.get("action");
+
+    // Serve the GitHub Pages frontend from this same Worker origin so account cookies and API calls are first-party.
+    if (!requestedAction && (request.method === "GET" || request.method === "HEAD")) {
+      const upstreamPath = incomingUrl.pathname === "/" ? "/Nexus-ai/" : "/Nexus-ai" + incomingUrl.pathname;
+      const upstreamUrl = new URL(upstreamPath + incomingUrl.search, "https://jessicaridelle-beep.github.io");
+      try {
+        const upstream = await fetch(upstreamUrl.toString(), { method: request.method, headers: { "Accept": request.headers.get("Accept") || "*/*" } });
+        const responseHeaders = new Headers(upstream.headers);
+        responseHeaders.delete("content-length");
+        responseHeaders.delete("content-encoding");
+        responseHeaders.set("Cache-Control", "no-cache");
+        responseHeaders.set("X-Content-Type-Options", "nosniff");
+        return new Response(request.method === "HEAD" ? null : upstream.body, { status: upstream.status, statusText: upstream.statusText, headers: responseHeaders });
+      } catch (error) {
+        console.error("Frontend proxy failed:", error && error.message ? error.message : error);
+        return json({ error: "ORIVANE could not load its website files. Please try again." }, 502);
+      }
+    }
 
     if (requestedAction === "early-access-checkout") {
       if (request.method !== "POST") return json({ error: "Use POST to start checkout." }, 405);
