@@ -25,7 +25,7 @@ function closeVoiceMode(){voiceModeActive=false;stopVoiceListening();if("speechS
 document.getElementById("voiceInput")?.addEventListener("click",()=>{voiceModeActive=true;voiceFinalText="";voiceTranscript.textContent="Your speech will appear here…";voiceSendButton.disabled=true;voicePanel.hidden=false;setVoiceStatus("Tap Start listening when you're ready.");});
 document.getElementById("voiceModeClose")?.addEventListener("click",closeVoiceMode);
 voiceListenButton?.addEventListener("click",()=>{if(voiceListening)stopVoiceListening();else startVoiceListening();});
-voiceSendButton?.addEventListener("click",async()=>{const spoken=voiceFinalText.trim();if(!spoken)return;stopVoiceListening();voiceFinalText="";voiceTranscript.textContent="Sending: "+spoken;voiceSendButton.disabled=true;setVoiceStatus("ORIVANE is thinking…");const reply=await sendMessage(spoken);if(!voiceModeActive)return;if(reply){await speakVoiceReply(reply);}if(voiceModeActive){voiceTranscript.textContent="Ready for your next message.";setVoiceStatus("Your turn. Tap Start listening.");}});
+voiceSendButton?.addEventListener("click",async()=>{const spoken=voiceFinalText.trim();if(!spoken)return;stopVoiceListening();voiceFinalText="";voiceTranscript.textContent="Sending: "+spoken;voiceSendButton.disabled=true;setVoiceStatus("ORIVANE is thinking…");const reply=await sendMessage(spoken);if(!voiceModeActive)return;if(reply){await speakVoiceReply(reply);}if(voiceModeActive){voiceTranscript.textContent="Ready for your next message.";startVoiceListening();}});
 form.addEventListener("submit",e=>{e.preventDefault();sendMessage(input.value);});
 input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,160)+"px";});
 input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit();}});
@@ -86,16 +86,7 @@ document.getElementById("commandPaletteOpen")?.addEventListener("click",()=>open
 document.querySelectorAll("[data-command]").forEach(b=>b.addEventListener("click",()=>{const prefix=b.dataset.command;input.value=(input.value.trim()?input.value.trim()+"\n\n":"")+prefix;input.focus();input.dispatchEvent(new Event("input"));closeDialog("commandPaletteOverlay");}));
 document.getElementById("attachTextButton")?.addEventListener("click",()=>document.getElementById("attachTextInput").click());
 document.getElementById("attachTextInput")?.addEventListener("change",async e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>500000){chatNote.textContent="That file is too large. Choose a text file under 500 KB.";e.target.value="";return;}try{attachedContext=await file.text();if(!attachedContext.trim())throw new Error("This file is empty.");chatNote.textContent="Attached locally: "+file.name+" ("+Math.min(attachedContext.length,12000)+" characters will be included with your next message).";}catch(err){attachedContext="";chatNote.textContent=err.message||"Couldn't read that file.";}e.target.value="";});
-document.getElementById("voiceInput")?.addEventListener("click",()=>{
- const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SpeechRecognition){chatNote.textContent="Voice typing isn't supported by this browser. Try Chrome or use your keyboard microphone.";return;}
- const recognition=new SpeechRecognition();recognition.lang=navigator.language||"en-US";recognition.interimResults=false;recognition.maxAlternatives=1;
- chatNote.textContent="Listening… speak now.";const b=document.getElementById("voiceInput");b.classList.add("mode-active");
- recognition.onresult=e=>{const spoken=e.results?.[0]?.[0]?.transcript||"";if(spoken){input.value+=(input.value?" ":"")+spoken;input.focus();input.dispatchEvent(new Event("input"));chatNote.textContent="Voice text added. Review it before sending.";}};
- recognition.onerror=e=>{chatNote.textContent="Voice input error: "+e.error+". You can type instead.";};
- recognition.onend=()=>b.classList.remove("mode-active");
- try{recognition.start();}catch{b.classList.remove("mode-active");chatNote.textContent="Voice input couldn't start. Try again.";}
-});
+
 
 /* ORIVANE WIP access gate — verified against the server-side Early Access entitlement */
 (()=>{
