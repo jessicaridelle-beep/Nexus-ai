@@ -87,7 +87,7 @@
  function shut(){overlay.hidden=true;document.body.classList.remove("plugin-hub-open");}
  pluginsBtn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
- gifBtn.addEventListener("click",()=>{const trigger=$("gifButton");if(!trigger)return;trigger.click();setTimeout(()=>{$("openGifCreator")?.click();},0);});
+ gifBtn.addEventListener("click",()=>{const trigger=$("gifButton");if(trigger)trigger.click();});
 })();
 
 
@@ -96,7 +96,7 @@
  const $=id=>document.getElementById(id),el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
  const sidebar=$("sidebar");if(!sidebar)return;const STORE="orivane-action-history-v2",API="https://nexus-ai-api.jessicaridelle.workers.dev/";
  const read=()=>{try{const v=JSON.parse(localStorage.getItem(STORE)||"[]");return Array.isArray(v)?v:[]}catch{return[];}},save=items=>localStorage.setItem(STORE,JSON.stringify(items.slice(0,20)));
- const btn=el("button","side-link","⚡ Action Studio");btn.type="button";btn.id="actionStudioOpen";const anchor=$("projectsOpen");if(anchor)anchor.insertAdjacentElement("afterend",btn);
+ const btn=el("button","side-link");btn.type="button";btn.id="actionStudioOpen";btn.innerHTML='⚡ Action Studio <span class="wip-badge">WIP</span>';const anchor=$("projectsOpen");if(anchor)anchor.insertAdjacentElement("afterend",btn);
  const overlay=el("div","action-overlay");overlay.id="actionStudio";overlay.hidden=true;const modal=el("section","action-modal action-modal-expanded");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","actionStudioTitle");
  const head=el("div","action-head"),titles=el("div","");titles.append(el("div","action-eyebrow","TASK ORCHESTRATION"),el("h2","","Action Studio"),el("p","","Plan a task, execute it step by step, and keep the results."));
  const close=el("button","workspace-close","×");close.type="button";close.setAttribute("aria-label","Close Action Studio");head.append(titles,close);
@@ -128,7 +128,7 @@
  copy.addEventListener("click",async()=>{const text="# "+currentTask+"\n\n"+currentSteps.map(s=>"## "+s.title+" ["+s.status+"]\n\n"+(s.result||s.error||s.instruction)).join("\n\n");try{await navigator.clipboard.writeText(text);copy.textContent="Copied";setTimeout(()=>copy.textContent="Copy full result",1200);}catch{copy.textContent="Clipboard unavailable";}});
  download.addEventListener("click",()=>{const text="# "+currentTask+"\n\n"+currentSteps.map(s=>"## "+s.title+" ["+s.status+"]\n\n"+(s.result||s.error||s.instruction)).join("\n\n");const blob=new Blob([text],{type:"text/markdown;charset=utf-8"});const url=URL.createObjectURL(blob);const a=el("a");a.href=url;a.download="orivane-action-report.md";a.click();URL.revokeObjectURL(url);});
  form.addEventListener("submit",execute);function open(){overlay.hidden=false;document.body.classList.add("action-open");$("currentPage").textContent="Action Studio";renderHistory();input.focus();}function shut(){overlay.hidden=true;document.body.classList.remove("action-open");$("currentPage").textContent="Chat";}
- btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});renderHistory();
+ btn.addEventListener("click",()=>window.orivaneWipGate("Action Studio",open));close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});renderHistory();
 })();
 /* ORIVANE system status, CEO access and live visitor UI */
 (()=>{
@@ -146,11 +146,11 @@
  const items=[
    {id:"chat",name:"AI chat",state:"READY",kind:"ready",detail:"The chat interface and Worker AI route are implemented."},
    {id:"personality",name:"Messenger-style personality",state:"READY",kind:"ready",detail:"Natural conversation, contextual replies, honest uncertainty and a clear AI identity are configured in the live model prompt."},
-   {id:"research",name:"Research / update checking",state:"WIP",kind:"wip",detail:"The Worker can attempt live search when its runtime exposes the search tool. Automatic triggers include version and update checks; live reliability still needs end-to-end testing."},
-   {id:"actions",name:"Action Studio",state:"WIP",kind:"wip",detail:"Creates plans of up to 6 steps, runs them sequentially, supports stop/retry and exports reports. It currently produces content; it cannot directly edit your files or control other apps."},
+   {id:"research",name:"Research / update checking",state:"WIP",kind:"wip",detail:"Early Access only. The Worker can attempt live search when its runtime exposes the search tool; live reliability still needs end-to-end testing."},
+   {id:"actions",name:"Action Studio",state:"WIP",kind:"wip",detail:"Early Access only. Creates plans of up to 6 steps, runs them sequentially, supports stop/retry and exports reports. It currently produces content; it cannot directly edit your files or control other apps."},
    {id:"projects",name:"Projects workspace",state:"READY",kind:"ready",detail:"Create projects, notes and task lists locally in this browser."},
-   {id:"klipy",name:"KLIPY GIF search",state:"WIP",kind:"wip",detail:"The server proxy is implemented. It becomes usable when the KLIPY server key is configured."},
-   {id:"gif",name:"AI GIF creation",state:"SOON",kind:"soon",detail:"The interface is present, but no connected GIF-generation provider exists yet. A local video-to-GIF fallback needs to be built and tested."},
+   {id:"klipy",name:"GIF Studio (KLIPY + AI GIFs)",state:"WIP",kind:"wip",detail:"Early Access only. GIF search and AI GIF creation are experimental; availability also depends on the connected provider."},
+   {id:"wipaccess",name:"WIP feature access",state:"WIP",kind:"wip",detail:"Research Mode, Action Studio and GIF Studio require a verified Early Access entitlement. Regular accounts see an unlock prompt for the one-time €0.99 pass."},
    {id:"visitors",name:"Live visitor counter",state:"SOON",kind:"soon",detail:"Needs shared server-side presence storage. A local counter would be misleading, so it is not presented as live."},
    {id:"ceo",name:"Secure owner access",state:"WIP",kind:"wip",detail:"JR is reserved and cannot be registered publicly. The owner setup code still needs to be configured before the JR account can be claimed."},
    {id:"passkey",name:"Device-bound verification",state:"SOON",kind:"soon",detail:"Requires a complete WebAuthn/passkey flow, server challenge storage and independent security testing."},
