@@ -68,7 +68,17 @@
   const result=el("div","studio-image-result");body.append(result);
   const history=read(KEYS.images);history.slice(0,4).forEach(item=>{if(item.url){const card=el("div","studio-history-card"),img=el("img","studio-history-image");img.src=item.url;img.alt=item.prompt||"Generated image";card.append(img,el("small",""," "+(item.prompt||"Saved image")));card.append(action("↓ Download",()=>{const a=document.createElement("a");a.href=item.url;a.download="orivane-image.jpg";a.click()}));result.append(card)}});
   form.addEventListener("submit",async e=>{e.preventDefault();const value=prompt.value.trim();if(!value)return;generate.disabled=true;status.textContent="Generating…";
-   try{const res=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=create-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:value})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Image generation failed.");if(!data.image_data_url)throw new Error("The model returned no image.");const img=el("img","studio-generated-image");img.src=data.image_data_url;img.alt=value;const tools=el("div","studio-image-actions");const download=action("↓ Download",()=>{const a=document.createElement("a");a.href=data.image_data_url;a.download="orivane-image.jpg";a.click()});tools.append(download);result.prepend(tools,img);write(KEYS.images,[{prompt:value,url:data.image_data_url,created:Date.now()},...read(KEYS.images)].slice(0,4));status.textContent="Image ready.";}catch(err){status.textContent=err.message||"Couldn't generate the image.";}finally{generate.disabled=false;}
+   try{const res=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=create-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:value})});const data=await res.json();if(!res.ok)throw new Error(data.error||"Image generation failed.");if(!data.image_data_url)throw new Error("The model returned no image.");const img=el("img","studio-generated-image");img.src=data.image_data_url;img.alt=value;const tools=el("div","studio-image-actions");const download=action("↓ Download",()=>{const a=document.createElement("a");a.href=data.image_data_url;a.download="orivane-image.jpg";a.click()});tools.append(download);result.prepend(tools,img);status.textContent="Image ready.";
+   try{
+    const storedImage=new Image();storedImage.src=data.image_data_url;
+    await new Promise((resolve,reject)=>{storedImage.onload=resolve;storedImage.onerror=()=>reject(new Error("Image could not be prepared for local history."));});
+    const scale=Math.min(1,640/Math.max(storedImage.naturalWidth,storedImage.naturalHeight));
+    const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(storedImage.naturalWidth*scale));canvas.height=Math.max(1,Math.round(storedImage.naturalHeight*scale));
+    const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Canvas unavailable.");ctx.drawImage(storedImage,0,0,canvas.width,canvas.height);
+    const compact=canvas.toDataURL("image/jpeg",0.68);
+    write(KEYS.images,[{prompt:value,url:compact,created:Date.now()},...read(KEYS.images)].slice(0,3));
+   }catch(storageError){status.textContent="Image ready, but local history couldn't save it. You can still download it.";}
+}catch(err){status.textContent=err.message||"Couldn't generate the image.";}finally{generate.disabled=false;}
   });
  }
  function memoryStudio(){
