@@ -145,7 +145,7 @@
   {name:"AI GIF creation",state:"SOON",kind:"soon",detail:"The creator interface exists, but no generation provider is connected. Creation is unavailable."},
   {name:"Live visitor counter",state:"SOON",kind:"soon",detail:"No shared presence service or live visitor database is connected yet."},
   {name:"CEO access",state:"SOON",kind:"soon",detail:"Secure CEO authentication is not implemented. No visitor is granted administrator privileges."},
-  {name:"Device + ChatGPT account check",state:"SOON",kind:"soon",detail:"A normal website link cannot prove which ChatGPT account opened it. This requires a supported, verifiable identity handoff; none is connected."},
+  {name:"Device-bound CEO verification",state:"SOON",kind:"soon",detail:"A secure device credential or passkey is not configured yet. CEO access remains disabled until device verification is implemented and tested."},
   {name:"Profile sign-in",state:"SOON",kind:"soon",detail:"The current profile only saves a display name locally. Password and Google sign-in are not active."}
  ];
  items.forEach(item=>{const card=el("article","status-card");const top=el("div","status-card-top");top.append(el("b","",item.name),el("span","status-pill "+item.kind,item.state));card.append(top,el("p","",item.detail));grid.append(card);});
