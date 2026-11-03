@@ -5,7 +5,7 @@ const ORIVANE_VERSION = "2026.11.03";
 
 const PROJECT_REPO = "jessicaridelle-beep/Nexus-ai";
 const PROJECT_SITE = "https://jessicaridelle-beep.github.io/Nexus-ai/";
-const PUBLIC_SOURCE_FILES = ["index.html","style.css","script.js","worker.js","features.js","workspace.js","gif-picker.js","gif-accessibility.js"];
+const PUBLIC_SOURCE_FILES = ["index.html","style.css","script.js","worker.js","features.js","workspace.js","gif-picker.js","gif-accessibility.js","studios.js"];
 
 async function readPublicProjectFile(path) {
   if (!PUBLIC_SOURCE_FILES.includes(path)) return null;
@@ -363,6 +363,7 @@ export default {
           klipy: !!env.KLIPY_APP_KEY,
           tenor: !!env.TENOR_API_KEY,
           gifGeneration: !!(env.AI && typeof env.AI.run === "function"),
+          imageGeneration: !!(env.AI && typeof env.AI.run === "function"),
           visitorCounter: false,
           secureAuth: secureAuthReady,
           googleOAuth: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
