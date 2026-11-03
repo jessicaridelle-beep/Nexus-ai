@@ -86,6 +86,14 @@
    importPreview.append(image,info,send);importPreview.hidden=false;
   });
  }
+ const creator=$("gifCreateView"),openCreator=$("openGifCreator"),backCreator=$("gifCreatorBack"),createForm=$("gifCreateForm"),createPrompt=$("gifCreatePrompt"),createSubmit=$("gifCreateSubmit"),createStatus=$("gifCreateStatus"),createResult=$("gifCreateResult"),createPreview=$("gifCreatePreview");
+ let generatedGifUrl="";
+ function showCreator(open){creator.hidden=!open;form.hidden=open;grid.hidden=open;status.hidden=open;panel.querySelector(".gif-categories").hidden=open;panel.querySelector(".gif-create-entry").hidden=open;if(open)createPrompt.focus();}
+ openCreator?.addEventListener("click",()=>showCreator(true));
+ backCreator?.addEventListener("click",()=>showCreator(false));
+ createForm?.addEventListener("submit",async e=>{e.preventDefault();const prompt=createPrompt.value.trim();if(!prompt)return;createSubmit.disabled=true;createSubmit.textContent="Creating…";createStatus.textContent="Sending your idea to the GIF generator…";createResult.hidden=true;try{const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=create-gif",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});const data=await response.json();if(!response.ok)throw new Error(data.error||"GIF generation is not available yet.");if(!data.gif_url||!/^https:\/\//i.test(data.gif_url))throw new Error("The GIF service returned an invalid result.");generatedGifUrl=data.gif_url;createPreview.src=generatedGifUrl;createResult.hidden=false;createStatus.textContent="Your GIF is ready!";}catch(err){createStatus.textContent=err.message||"Couldn't create the GIF. Try again.";}finally{createSubmit.disabled=false;createSubmit.textContent="✦ Generate GIF";}});
+ $("gifAddToChat")?.addEventListener("click",()=>{if(generatedGifUrl&&window.sendGifUrlToChat(generatedGifUrl)){createStatus.textContent="GIF added to chat.";show(false);}});
+ $("gifRecreate")?.addEventListener("click",()=>{generatedGifUrl="";createResult.hidden=true;createStatus.textContent="Edit your prompt or generate another version.";createPrompt.focus();});
  const attribution=document.createElement("div");attribution.className="gif-attribution";attribution.textContent="Powered by KLIPY · Secure server-side connection";panel.append(attribution);
  form.addEventListener("submit",e=>{e.preventDefault();load(query.value.trim());});
  panel.querySelectorAll("[data-gif-search]").forEach(b=>b.addEventListener("click",()=>{query.value=b.dataset.gifSearch;load(query.value);}));
