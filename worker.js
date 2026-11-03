@@ -27,7 +27,28 @@ export default {
     if (origin !== SITE_ORIGIN) return json({ error: "This website is not allowed to use this endpoint." }, 403);
     if (request.method === "GET") {
       const url = new URL(request.url);
-      if (url.searchParams.get("action") !== "gif-search") return json({ error: "Unknown action." }, 404);
+      const action = url.searchParams.get("action");
+      if (action === "klipy-gifs") {
+        if (!env.KLIPY_APP_KEY) return json({ error: "KLIPY is not configured on the ORIVANE Worker yet." }, 503);
+        const query = (url.searchParams.get("q") || "").trim().slice(0, 80);
+        const path = query ? "gifs/search" : "gifs/trending";
+        const params = new URLSearchParams({
+          page: "1", per_page: "24", locale: "en", country: "be",
+          contentfilter: "high", media_filter: "gif,tinygif"
+        });
+        if (query) params.set("q", query);
+        try {
+          const upstream = await fetch("https://api.klipy.com/api/v1/" + encodeURIComponent(env.KLIPY_APP_KEY) + "/" + path + "?" + params.toString(), {
+            headers: { Accept: "application/json" }
+          });
+          const data = await upstream.json();
+          if (!upstream.ok) return json({ error: data?.message || data?.error || ("KLIPY request failed (" + upstream.status + ").") }, 502);
+          return json(data);
+        } catch {
+          return json({ error: "Couldn't reach KLIPY right now. Try again." }, 502);
+        }
+      }
+      if (action !== "gif-search") return json({ error: "Unknown action." }, 404);
       if (!env.TENOR_API_KEY) return json({ error: "GIF search needs a Tenor API key configured on the ORIVANE Worker." }, 503);
       const query = (url.searchParams.get("q") || "").trim().slice(0, 80);
       const endpoint = query
