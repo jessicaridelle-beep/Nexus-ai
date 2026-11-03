@@ -1,4 +1,4 @@
-const ORIVANE_API_URL = "https://orivane-api.jessicaridelle.workers.dev";
+const ORIVANE_API_URL = "https://nexus-ai-api.jessicaridelle.workers.dev";
 const form=document.getElementById("chatForm"),input=document.getElementById("promptInput"),content=document.getElementById("chatContent"),sendButton=form.querySelector('[type="submit"]'),chatNote=document.querySelector(".chat-note"),welcome=document.getElementById("welcome"),sidebar=document.getElementById("sidebar");
 const MEMORY_KEY="orivane-memory-v1",MEMORY_FLAG="orivane-memory-enabled";
 const conversation=[];
@@ -48,7 +48,7 @@ document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{if(e.target===o)closeDialog(o.id);}));
 let profileMode="register";
 let signedInUser=null;
-const authUrl="https://orivane-api.jessicaridelle.workers.dev/";
+const authUrl="https://nexus-ai-api.jessicaridelle.workers.dev/";
 const authFrameName="orivaneAuthTransport";
 const authPending=new Map();
 function ensureAuthFrame(){let frame=document.getElementById(authFrameName);if(!frame){frame=document.createElement("iframe");frame.id=authFrameName;frame.name=authFrameName;frame.title="ORIVANE secure account connection";frame.setAttribute("aria-hidden","true");frame.style.cssText="position:fixed;width:1px;height:1px;left:-10px;bottom:0;border:0;opacity:0;pointer-events:none";document.body.appendChild(frame);}return frame;}
@@ -90,7 +90,7 @@ document.getElementById("attachTextInput")?.addEventListener("change",async e=>{
 
 /* ORIVANE WIP access gate — verified against the server-side Early Access entitlement */
 (()=>{
- const API="https://orivane-api.jessicaridelle.workers.dev/";
+ const API="https://nexus-ai-api.jessicaridelle.workers.dev/";
  let gateOverlay=null,gateFeature=null;
  function buildGate(){
   if(gateOverlay)return;
@@ -129,7 +129,7 @@ document.getElementById("attachTextInput")?.addEventListener("change",async e=>{
  const buy=document.getElementById("earlyAccessBuy");
  const status=document.getElementById("earlyAccessAccountStatus");
  if(!overlay||!open||!close||!buy||!status)return;
- const api="https://orivane-api.jessicaridelle.workers.dev/";
+ const api="https://nexus-ai-api.jessicaridelle.workers.dev/";
  const returned=new URLSearchParams(location.search).get("early_access");
  function show(){overlay.hidden=false;document.body.style.overflow="hidden";refresh();}
  function hide(){overlay.hidden=true;document.body.style.overflow="";}
