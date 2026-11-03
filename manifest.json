@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "ORIVANE — AI Workspace",
+  "short_name": "ORIVANE",
+  "description": "Your AI assistant and creative workspace.",
+  "start_url": "./?source=app",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#100b08",
+  "theme_color": "#100b08",
+  "categories": ["productivity", "education", "utilities"],
+  "icons": [
+    { "src": "./orivane-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./orivane-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
