@@ -239,7 +239,7 @@ export default {
 
       let webContext = "";
       let webSearchStatus = "not-needed";
-      const latestQuestion = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+
       const needsWeb = body.research === true || /\b(latest|today|current|right now|this week|recent|news|price|release|update|updates|updated|version|new feature|changed|verify|fact.?check|check if|is it still|search the web|look up|on the internet|internet|online|browse|website|source|who won|weather|recherche|sur internet|en ligne|actualité|aujourd'hui|actuel|mise à jour|nouvelle version|vérifie|verifier)\b/i.test(latestQuestion);
       if (needsWeb) {
         if (!env.AI || typeof env.AI.websearch !== "function") {
