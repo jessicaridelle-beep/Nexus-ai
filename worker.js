@@ -44,7 +44,7 @@ export default {
 
       let webContext = "";
       const latestQuestion = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-      const needsWeb = /\\b(latest|today|current|right now|this week|recent|news|price|release|update|search the web|look up|on the internet|source|website|who won|weather)\\b/i.test(latestQuestion);
+      const needsWeb = /\b(latest|today|current|right now|this week|recent|news|price|release|update|search the web|look up|on the internet|source|website|who won|weather)\b/i.test(latestQuestion);
       if (needsWeb && env.AI && typeof env.AI.websearch === "function") {
         try {
           const searchResponse = await env.AI.websearch({
