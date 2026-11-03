@@ -73,6 +73,19 @@ export default {
 
     if (request.method !== "POST") return json({ error: "Use POST to send a chat message." }, 405);
 
+    const requestUrl = new URL(request.url);
+    if (requestUrl.searchParams.get("action") === "create-gif") {
+      let createBody;
+      try { createBody = await request.json(); }
+      catch { return json({ error: "The GIF prompt must be valid JSON." }, 400); }
+      if (typeof createBody.prompt !== "string" || !createBody.prompt.trim() || createBody.prompt.length > 500) {
+        return json({ error: "Enter a GIF prompt between 1 and 500 characters." }, 400);
+      }
+      return json({
+        error: "The Create GIF screen is ready, but no GIF-generation provider is connected yet. The ChatGPT GifGen tool is not callable from this website. Connect a GIF-generation API to enable creation."
+      }, 503);
+    }
+
     try {
       const body = await request.json();
       if (new URL(request.url).searchParams.get("action") === "create-gif") {
