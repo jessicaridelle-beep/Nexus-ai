@@ -61,15 +61,28 @@ async function passwordHash(password, salt, iterations=PASSWORD_ITERATIONS) {
  return toB64(bits);
 }
 async function issueSession(db,userId) {
- const bytes=crypto.getRandomValues(new Uint8Array(32)), token=toB64(bytes), tokenHash=await digest(token), now=Math.floor(Date.now()/1000);
+ const now=Math.floor(Date.now()/1000);
+ await db.prepare("DELETE FROM sessions WHERE expires_at<=?").bind(now).run();
+ const bytes=crypto.getRandomValues(new Uint8Array(32)), token=toB64(bytes), tokenHash=await digest(token);
  await db.prepare("INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)").bind(tokenHash,userId,now+SESSION_SECONDS,now).run();
  return token;
 }
-function cookieHeader(token,maxAge=SESSION_SECONDS) { return AUTH_COOKIE+"="+token+"; Path=/; HttpOnly; Secure; SameSite=None; Max-Age="+maxAge; }
+function cookieHeader(token,maxAge=SESSION_SECONDS) { return AUTH_COOKIE+"="+token+"; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age="+maxAge; }
 function readCookie(request,name) {
  const raw=request.headers.get("Cookie")||"";
  for(const part of raw.split(";")) { const i=part.indexOf("="); if(i>0&&part.slice(0,i).trim()===name) return part.slice(i+1).trim(); }
  return "";
+}
+async function allowRateLimit(env, request, scope, limit, windowSeconds) {
+ if (!env.DB) return true;
+ try {
+  const address=request.headers.get("CF-Connecting-IP")||"unknown";
+  const key=await digest(scope+"|"+address);
+  const now=Math.floor(Date.now()/1000),start=now-windowSeconds;
+  await env.DB.prepare("INSERT INTO api_rate_limits(rate_key,count,window_start) VALUES(?,1,?) ON CONFLICT(rate_key) DO UPDATE SET count=CASE WHEN window_start<=? THEN 1 ELSE count+1 END,window_start=CASE WHEN window_start<=? THEN excluded.window_start ELSE window_start END").bind(key,now,start,start).run();
+  const row=await env.DB.prepare("SELECT count FROM api_rate_limits WHERE rate_key=?").bind(key).first();
+  return !!row && row.count<=limit;
+ } catch { return true; }
 }
 async function currentUser(request,db) {
  const token=readCookie(request,AUTH_COOKIE); if(!token) return null;
@@ -84,6 +97,7 @@ function corsHeaders(origin) {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Vary": "Origin",
+    "Cache-Control": "no-store",
     "Access-Control-Allow-Credentials": origin === SITE_ORIGIN ? "true" : "false"
   };
 }
@@ -113,6 +127,13 @@ export default {
         return json({authenticated:!!user,user:user?{username:user.username,role:user.role}:null});
       }
       if (request.method !== "POST") return json({error:"Use POST for this action."},405);
+      if (requestedAction === "auth-logout") {
+        const token=readCookie(request,AUTH_COOKIE);
+        if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await digest(token)).run();
+        return new Response(JSON.stringify({ok:true}),{headers:{...headers,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","Set-Cookie":cookieHeader("",0)}});
+      }
+      const contentType=request.headers.get("Content-Type")||"";
+      if (!contentType.toLowerCase().startsWith("application/json")) return json({error:"Send authentication requests as JSON."},415);
       let input={}; try { input=await request.json(); } catch { return json({error:"Enter valid JSON."},400); }
       const username=String(input.username||"").trim().normalize("NFKC");
       const password=String(input.password||"");
@@ -142,7 +163,7 @@ export default {
           if (isOwner) await env.DB.prepare("INSERT INTO auth_meta(key,value) VALUES('jr_claimed','1')").run();
         } catch { return json({error:"Could not create this account. Try another username."},409); }
         const token=await issueSession(env.DB,id);
-        return new Response(JSON.stringify({ok:true,user:{username,role:isOwner?"owner":"user"}}),{status:201,headers:{...headers,"Content-Type":"application/json; charset=utf-8","Set-Cookie":cookieHeader(token)}});
+        return new Response(JSON.stringify({ok:true,user:{username,role:isOwner?"owner":"user"}}),{status:201,headers:{...headers,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","Set-Cookie":cookieHeader(token)}});
       }
       if (requestedAction==="auth-login") {
         const row=await env.DB.prepare("SELECT id,username,password_hash,password_salt,password_iterations,role FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
@@ -151,11 +172,6 @@ export default {
         await env.DB.prepare("DELETE FROM auth_attempts WHERE attempt_key=?").bind(attemptKey).run();
         const token=await issueSession(env.DB,row.id);
         return new Response(JSON.stringify({ok:true,user:{username:row.username,role:row.role}}),{headers:{...headers,"Content-Type":"application/json; charset=utf-8","Set-Cookie":cookieHeader(token)}});
-      }
-      if (requestedAction==="auth-logout") {
-        const token=readCookie(request,AUTH_COOKIE);
-        if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await digest(token)).run();
-        return new Response(JSON.stringify({ok:true}),{headers:{...headers,"Content-Type":"application/json; charset=utf-8","Set-Cookie":cookieHeader("",0)}});
       }
     }
 
@@ -174,7 +190,10 @@ export default {
         publicFiles: PUBLIC_SOURCE_FILES,
         checkedAt: new Date().toISOString()
       });
-      if (action === "health") return json({
+      if (action === "health") {
+        let secureAuthReady=false;
+        if (env.DB) { try { const probe=await env.DB.prepare("SELECT COUNT(*) AS total FROM users").first(); secureAuthReady=!!probe; } catch {} }
+        return json({
         services: {
           aiChat: !!(env.AI && typeof env.AI.run === "function"),
           webSearch: !!(env.AI && typeof env.AI.websearch === "function"),
@@ -182,12 +201,13 @@ export default {
           tenor: !!env.TENOR_API_KEY,
           gifGeneration: false,
           visitorCounter: false,
-          secureAuth: !!env.DB,
+          secureAuth: secureAuthReady,
           googleOAuth: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
           ownerClaimConfigured: !!env.JR_SETUP_CODE
         },
         checkedAt: new Date().toISOString()
       });
+      }
       if (action === "create-gif") return json({ error: "The creator interface is installed, but no callable GIF-generation API is connected yet. The ChatGPT GifGen tool cannot be invoked directly by a public website; a provider API and server secret are required." }, 503);
       if (action === "klipy-gifs") {
         if (!env.KLIPY_APP_KEY) return json({ error: "KLIPY is not configured on the ORIVANE Worker yet." }, 503);
@@ -236,6 +256,7 @@ export default {
     const requestUrl = new URL(request.url);
 
     const action = requestUrl.searchParams.get("action");
+    if ((action === "plan-task" || action === "run-step" || action === "run-task") && !(await allowRateLimit(env, request, "action-studio", 10, 300))) return json({error:"Action Studio is temporarily rate-limited. Please try again in five minutes."},429);
     if (action === "plan-task" || action === "run-step") {
       let payload;
       try { payload = await request.json(); } catch { return json({ error: "The task request must be valid JSON." }, 400); }
@@ -307,6 +328,7 @@ export default {
       }, 503);
     }
 
+    if (!(await allowRateLimit(env, request, "chat", 24, 300))) return json({error:"ORIVANE chat is temporarily rate-limited. Please try again in five minutes."},429);
     try {
       const body = await request.json();
       if (new URL(request.url).searchParams.get("action") === "create-gif") {
