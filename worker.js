@@ -28,6 +28,18 @@ export default {
     if (request.method === "GET") {
       const url = new URL(request.url);
       const action = url.searchParams.get("action");
+      if (action === "health") return json({
+        services: {
+          aiChat: !!(env.AI && typeof env.AI.run === "function"),
+          webSearch: !!(env.AI && typeof env.AI.websearch === "function"),
+          klipy: !!env.KLIPY_APP_KEY,
+          tenor: !!env.TENOR_API_KEY,
+          gifGeneration: false,
+          visitorCounter: false,
+          secureAuth: false
+        },
+        checkedAt: new Date().toISOString()
+      });
       if (action === "create-gif") return json({ error: "The creator interface is installed, but no callable GIF-generation API is connected yet. The ChatGPT GifGen tool cannot be invoked directly by a public website; a provider API and server secret are required." }, 503);
       if (action === "klipy-gifs") {
         if (!env.KLIPY_APP_KEY) return json({ error: "KLIPY is not configured on the ORIVANE Worker yet." }, 503);
