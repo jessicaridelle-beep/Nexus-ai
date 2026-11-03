@@ -6,14 +6,14 @@
  const write=(key,value)=>localStorage.setItem(key,JSON.stringify(value));
  const modules=[
   ["dashboard","◈","Dashboard","Your workspace at a glance"],
-  ["image","▧","Image Studio","Generate original images from prompts"],
+  ["image","▧","Image Studio","Generate original images from prompts",true],
   ["memory","✧","Long-term Memory","Save useful facts for future chats"],
   ["code","⌘","Code Studio","Write, inspect and improve code"],
   ["automation","⚡","Automation Studio","Organise repeatable tasks and checklists"],
   ["operations","◎","Operation Studio","Create missions, assign steps and track progress"]
  ];
  const nav=el("div","studio-nav-group");nav.append(el("div","side-label","","")); 
- const anchor=$("projectsOpen"); if(anchor){modules.forEach(([id,icon,name])=>{const b=el("button","side-link studio-nav",icon+" ");b.type="button";b.dataset.studio=id;b.append(el("span","",name));if(id!=="dashboard")b.append(el("span","wip-badge","WIP"));b.addEventListener("click",()=>open(id));anchor.insertAdjacentElement("afterend",b);});}
+ const anchor=$("projectsOpen"); if(anchor){modules.forEach(([id,icon,name])=>{const b=el("button","side-link studio-nav",icon+" ");b.type="button";b.dataset.studio=id;b.append(el("span","",name));if(modules.find(x=>x[0]===id)?.[4])b.append(el("span","wip-badge","Experimental"));b.addEventListener("click",()=>open(id));anchor.insertAdjacentElement("afterend",b);});}
  const sidebar=$("sidebar");
  if(sidebar){
   const controls=el("div","sidebar-scroll-controls");
@@ -30,7 +30,7 @@
  const header=el("header","studio-head"),heading=el("div",""),eyebrow=el("div","studio-eyebrow","ORIVANE WORKSPACE");const title=el("h2","","Dashboard"),subtitle=el("p","","Your tools, projects and saved information.");heading.append(eyebrow,title,subtitle);
  const close=el("button","studio-close","×");close.type="button";close.setAttribute("aria-label","Close workspace");close.addEventListener("click",shut);header.append(heading,close);
  const body=el("div","studio-body");modal.append(header,body);overlay.append(modal);document.body.append(overlay);
- function open(id){const item=modules.find(x=>x[0]===id)||modules[0];if(id!=="dashboard"&&typeof window.orivaneWipGate==="function"){window.orivaneWipGate(item[2],()=>showStudio(id));return;}showStudio(id);} function showStudio(id){body.classList.remove("studio-dashboard-body");modal.querySelector(".studio-scroll-controls")?.remove();const item=modules.find(x=>x[0]===id)||modules[0];title.textContent=item[2];subtitle.textContent=item[3];body.replaceChildren();overlay.hidden=false;document.body.classList.add("studio-open");document.querySelectorAll(".studio-nav").forEach(b=>b.classList.toggle("active",b.dataset.studio===id));render(id);close.focus();}
+ function open(id){showStudio(id);} function showStudio(id){body.classList.remove("studio-dashboard-body");modal.querySelector(".studio-scroll-controls")?.remove();const item=modules.find(x=>x[0]===id)||modules[0];title.textContent=item[2];subtitle.textContent=item[3];body.replaceChildren();overlay.hidden=false;document.body.classList.add("studio-open");document.querySelectorAll(".studio-nav").forEach(b=>b.classList.toggle("active",b.dataset.studio===id));render(id);close.focus();}
  function shut(){overlay.hidden=true;document.body.classList.remove("studio-open");document.querySelectorAll(".studio-nav").forEach(b=>b.classList.remove("active"));}
  overlay.addEventListener("click",e=>{if(e.target===overlay)shut()});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut()});
  function section(kicker,heading,desc){const box=el("div","studio-section");box.append(el("div","studio-kicker",kicker),el("h3","",heading),el("p","",desc));return box;}
