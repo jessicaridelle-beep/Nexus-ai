@@ -16,3 +16,23 @@
 @keyframes message-in{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .brand-mark svg,.orb-core svg{filter:drop-shadow(0 0 4px #ff8a3240)}
 @media(max-width:420px){.composer-tools{gap:4px}.composer-tools .tool-button{min-width:30px;padding:0 6px}.composer-bottom{font-size:9px}}
+
+/* ORIVANE 2.1 polish, motion and utility states */
+[hidden]{display:none!important}
+.memory-button{font-size:9px!important;font-weight:800!important;letter-spacing:.4px;color:var(--muted)!important}
+.memory-button.memory-on{color:#ffad63!important;border-color:#ff8a3299!important;background:#ff8a3219!important}
+.gif-panel{margin:8px 0 0;padding:14px;border:1px solid #ff8a3255;border-radius:13px;background:var(--panel);animation:panel-in .18s ease-out}
+.gif-panel-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:10px}
+.gif-panel-head button{border:0;background:transparent;font-size:22px;color:var(--muted)}
+#gifForm{display:flex;gap:8px}
+#gifForm input{min-width:0;flex:1;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);padding:10px;font:12px 'DM Sans';outline:none}
+#gifForm input:focus{border-color:var(--accent)}
+#gifForm button{border:0;border-radius:9px;padding:0 12px;background:linear-gradient(130deg,var(--accent),var(--accent2));color:#17120e;font-size:11px;font-weight:700}
+.gif-panel p{font-size:10px;color:var(--muted);line-height:1.6;margin:10px 0 0}
+.message-actions{margin-top:7px}
+.message-actions button{border:1px solid var(--line);border-radius:7px;padding:4px 8px;background:transparent;color:var(--muted);font-size:10px}
+.message-actions button:hover{color:var(--accent);border-color:#ff8a3266}
+.message-link{display:inline-block;margin:4px 0;color:var(--accent2);text-decoration:underline;text-underline-offset:3px;font-size:12px}
+@keyframes panel-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+@media(max-width:420px){#gifForm{flex-direction:column}#gifForm button{padding:10px}}
