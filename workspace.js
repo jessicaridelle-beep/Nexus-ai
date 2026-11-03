@@ -144,22 +144,37 @@
  const close=el("button","workspace-close","×");close.type="button";close.setAttribute("aria-label","Close status");head.append(titles,close);
  const grid=el("div","status-grid");
  const items=[
-  {name:"AI chat",state:"READY",kind:"ready",detail:"The chat interface and Worker AI request route are implemented."},
-  {name:"Research / web search",state:"WIP",kind:"wip",detail:"The Worker attempts live search, but availability depends on its runtime and provider configuration. Results are not guaranteed."},
-  {name:"Action Studio",state:"WIP",kind:"wip",detail:"Plans up to 6 steps, executes them in sequence, saves local task history, supports stop/retry, copies results and downloads Markdown reports. It generates deliverables but does not directly edit repository files or operate external apps."},
-  {name:"Projects workspace",state:"READY",kind:"ready",detail:"Create projects, save notes and manage tasks locally in this browser."},
-  {name:"KLIPY GIF search",state:"WIP",kind:"wip",detail:"The server proxy is coded. A KLIPY server secret must be configured before search can work."},
-  {name:"AI GIF creation",state:"SOON",kind:"soon",detail:"The creator interface exists, but no generation provider is connected. Creation is unavailable."},
-  {name:"Live visitor counter",state:"SOON",kind:"soon",detail:"No shared presence service or live visitor database is connected yet."},
-  {name:"CEO access",state:"SOON",kind:"soon",detail:"Secure CEO authentication is not implemented. No visitor is granted administrator privileges."},
-  {name:"Device-bound CEO verification",state:"SOON",kind:"soon",detail:"A secure device credential or passkey is not configured yet. CEO access remains disabled until device verification is implemented and tested."},
-  {name:"Profile sign-in",state:"SOON",kind:"soon",detail:"The current profile only saves a display name locally. Password and Google sign-in are not active."}
- ];
- items.forEach(item=>{const card=el("article","status-card");const top=el("div","status-card-top");top.append(el("b","",item.name),el("span","status-pill "+item.kind,item.state));card.append(top,el("p","",item.detail));grid.append(card);});
- const security=el("section","status-security");security.append(el("h3","","CEO security gate"),el("p","","CEO access is currently disabled. Requests made from this site are denied until a real authentication system is configured and independently verified."),el("div","status-denied","CEO ACCESS: DENIED · AUTHENTICATION NOT CONFIGURED"),el("small","","Do not enter passwords, recovery codes, or private account details here. This page does not collect them."));
+   {id:"chat",name:"AI chat",state:"READY",kind:"ready",detail:"The chat interface and Worker AI route are implemented."},
+   {id:"personality",name:"Messenger-style personality",state:"READY",kind:"ready",detail:"Natural conversation, contextual replies, honest uncertainty and a clear AI identity are configured in the live model prompt."},
+   {id:"research",name:"Research / update checking",state:"WIP",kind:"wip",detail:"The Worker can attempt live search when its runtime exposes the search tool. Automatic triggers include version and update checks; live reliability still needs end-to-end testing."},
+   {id:"actions",name:"Action Studio",state:"WIP",kind:"wip",detail:"Creates plans of up to 6 steps, runs them sequentially, supports stop/retry and exports reports. It currently produces content; it cannot directly edit your files or control other apps."},
+   {id:"projects",name:"Projects workspace",state:"READY",kind:"ready",detail:"Create projects, notes and task lists locally in this browser."},
+   {id:"klipy",name:"KLIPY GIF search",state:"WIP",kind:"wip",detail:"The server proxy is implemented. It becomes usable when the KLIPY server key is configured."},
+   {id:"gif",name:"AI GIF creation",state:"SOON",kind:"soon",detail:"The interface is present, but no connected GIF-generation provider exists yet. A local video-to-GIF fallback needs to be built and tested."},
+   {id:"visitors",name:"Live visitor counter",state:"SOON",kind:"soon",detail:"Needs shared server-side presence storage. A local counter would be misleading, so it is not presented as live."},
+   {id:"ceo",name:"Secure owner access",state:"SOON",kind:"soon",detail:"Requires server-verified authentication and role checks. The site deliberately grants no admin access based on a username or browser setting."},
+   {id:"passkey",name:"Device-bound verification",state:"SOON",kind:"soon",detail:"Requires a complete WebAuthn/passkey flow, server challenge storage and independent security testing."},
+   {id:"profile",name:"Profile sign-in",state:"SOON",kind:"soon",detail:"Profile names are local only. Password and Google sign-in need a trusted authentication provider."}
+  ];
+  const cards=new Map();
+  items.forEach(item=>{const card=el("article","status-card");const top=el("div","status-card-top");const title=el("b","",item.name),pill=el("span","status-pill "+item.kind,item.state),detail=el("p","",item.detail);top.append(title,pill);card.append(top,detail);grid.append(card);cards.set(item.id,{pill,detail});});
+  const statusNote=el("p","status-footer","Checking live service configuration…");
+  async function refreshStatus(){
+   try{
+    const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=health",{headers:{Accept:"application/json"}});
+    if(!response.ok)throw new Error("Status endpoint unavailable");
+    const data=await response.json(),s=data.services||{};
+    const set=(id,state,kind,detail)=>{const c=cards.get(id);if(!c)return;c.pill.textContent=state;c.pill.className="status-pill "+kind;c.detail.textContent=detail;};
+    set("chat",s.aiChat?"READY":"WIP",s.aiChat?"ready":"wip",s.aiChat?"Worker AI binding detected.":"Worker AI binding is not configured.");
+    set("research",s.webSearch?"WIP":"SOON",s.webSearch?"wip":"soon",s.webSearch?"Search method is exposed by the Worker runtime; actual search requests still need reliability testing.":"This Worker runtime does not expose the live web-search method.");
+    set("klipy",s.klipy?"READY":"WIP",s.klipy?"ready":"wip",s.klipy?"KLIPY server key detected; provider requests can be attempted.":"Proxy is coded; configure the KLIPY server key to enable searches.");
+    statusNote.textContent="Configuration checked at "+new Date(data.checkedAt||Date.now()).toLocaleTimeString()+". A detected key or binding does not guarantee upstream service uptime.";
+   }catch{statusNote.textContent="Live status check failed. Showing the last known feature notes; this does not mean every service is offline.";}
+  }
+  const security=el("section","status-security");security.append(el("h3","","CEO security gate"),el("p","","CEO access is currently disabled. Requests made from this site are denied until a real authentication system is configured and independently verified."),el("div","status-denied","CEO ACCESS: DENIED · AUTHENTICATION NOT CONFIGURED"),el("small","","Do not enter passwords, recovery codes, or private account details here. This page does not collect them."));
  const footer=el("p","status-footer","Status labels: READY = usable feature · WIP = coded but incomplete or provider-dependent · SOON = not yet usable.");
  modal.append(head,grid,security,footer);overlay.append(modal);document.body.append(overlay);
- function open(){overlay.hidden=false;document.body.classList.add("status-open");$("currentPage").textContent="System status";close.focus();}
+ function open(){overlay.hidden=false;document.body.classList.add("status-open");$("currentPage").textContent="System status";close.focus();refreshStatus();}
  function shut(){overlay.hidden=true;document.body.classList.remove("status-open");$("currentPage").textContent="Chat";}
  btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
 })();
