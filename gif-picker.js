@@ -159,5 +159,5 @@
  form.addEventListener("submit",e=>{e.preventDefault();load(query.value.trim());});
  panel.querySelectorAll("[data-gif-search]").forEach(b=>b.addEventListener("click",()=>{query.value=b.dataset.gifSearch;load(query.value);}));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden)show(false);});
- load("");
+ // GIF requests start only after the Early Access gate grants entry.
 })();
