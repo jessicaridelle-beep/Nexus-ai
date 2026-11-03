@@ -341,9 +341,6 @@ export default {
       if (!env.AI || typeof env.AI.run !== "function") {
         return json({ error: "The image-generation service is not connected to ORIVANE right now." }, 503);
       }
-      if (!(await allowRateLimit(env, request, "gif-generation", 30, 300))) {
-        return json({ error: "GIF generation is limited to 30 requests every 5 minutes per network. Please try again shortly." }, 429);
-      }
       const storyboardPrompt =
         "Create a single, clean 3 by 3 animation storyboard sprite sheet, exactly 3 equal columns and 3 equal rows. " +
         "Each cell is one consecutive animation frame, read left to right, top to bottom. " +
