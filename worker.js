@@ -252,8 +252,10 @@ export default {
         return new Response(JSON.stringify({ok:true}),{headers:{...headers,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","Set-Cookie":cookieHeader("",0)}});
       }
       const contentType=request.headers.get("Content-Type")||"";
-      if (!contentType.toLowerCase().startsWith("application/json")) return json({error:"Send authentication requests as JSON."},415);
-      let input={}; try { input=await request.json(); } catch { return json({error:"Enter valid JSON."},400); }
+      const authContentType=contentType.toLowerCase();
+      if (!authContentType.startsWith("application/json") && !authContentType.startsWith("text/plain")) return json({error:"Send authentication requests as JSON text."},415);
+      let input={}; try { input=JSON.parse(await request.text()); } catch { return json({error:"Enter valid JSON."},400); }
+      if (!input || typeof input!=="object" || Array.isArray(input)) return json({error:"Enter valid authentication details."},400);
       const username=String(input.username||"").trim().normalize("NFKC");
       const password=String(input.password||"");
       if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) return json({error:"Username must be 3–24 characters using letters, numbers or underscores."},400);
