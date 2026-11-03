@@ -32,6 +32,7 @@
  close.addEventListener("click",closeWorkspace);overlay.addEventListener("click",e=>{if(e.target===overlay)closeWorkspace();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)closeWorkspace();});
  $("projectsOpen")?.addEventListener("click",openWorkspace);
+ $("projectsToolOpen")?.addEventListener("click",openWorkspace);
  document.querySelectorAll(".side-link").forEach(b=>{if(b.dataset.view==="projects")b.addEventListener("click",e=>{e.preventDefault();openWorkspace();});});
  create.addEventListener("click",()=>{const name=prompt("Name your project:");if(!name?.trim())return;const p={id:"p-"+Date.now(),name:name.trim().slice(0,70),description:"",notes:"",tasks:[],updated:Date.now()};const all=read();all.unshift(p);save(all);openProject(p.id);});
  search.addEventListener("input",render);
