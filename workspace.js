@@ -61,9 +61,9 @@
  if(!side||!pluginsBtn||!gifBtn)return;
  const KEY="orivane-plugin-settings-v1";
  const catalog=[
-  {id:"klipy",name:"KLIPY GIF Search",kind:"Media",desc:"Search and share existing animated GIFs. WIP feature restricted to verified Early Access members; also requires the KLIPY server key.",status:"WIP · Early Access · API key required",available:true},
-  {id:"gif-create",name:"AI GIF Creator",kind:"Creative",desc:"Create a looping GIF from a prompt, preview it, download it or add it to chat. Experimental WIP feature for verified Early Access members.",status:"WIP · Early Access",available:true},
-  {id:"research",name:"Research Mode",kind:"Research",desc:"Experimental live-source research. WIP feature restricted to verified Early Access members.",status:"WIP · Early Access · provider dependent",available:true},
+  {id:"klipy",name:"KLIPY GIF Search",kind:"Media",desc:"Search and share existing animated GIFs. WIP feature available to all members; requires the KLIPY server key.",status:"WIP · Available to all · API key required",available:true},
+  {id:"gif-create",name:"AI GIF Creator",kind:"Creative",desc:"Create a looping GIF from a prompt, preview it, download it or add it to chat. Experimental WIP feature available to all members.",status:"WIP · Available to all",available:true},
+  {id:"research",name:"Research Mode",kind:"Research",desc:"Experimental live-source research. WIP feature available to all members.",status:"WIP · Available to all · provider dependent",available:true},
   {id:"study",name:"Study Mode",kind:"Learning",desc:"Step-by-step explanations, examples and recap prompts.",status:"Built-in",available:true},
   {id:"voice",name:"Voice Typing",kind:"Accessibility",desc:"Dictate messages using browser speech recognition where supported.",status:"Built-in · browser dependent",available:true},
   {id:"projects",name:"Projects Workspace",kind:"Productivity",desc:"Keep project goals, notes and task lists together on this device.",status:"Built-in",available:true}
@@ -78,7 +78,7 @@
  const note=el("p","plugin-footnote","Plugin switches are saved in this browser. Enabling a switch does not create missing API access or configure external services.");
  modal.append(head,grid,note);overlay.append(modal);document.body.append(overlay);
  function render(){grid.replaceChildren();const settings=read();catalog.forEach(p=>{
-  const card=el("article","plugin-card");const top=el("div","plugin-card-top");top.append(el("span","plugin-kind",p.kind),el("span","plugin-indicator",["klipy","gif-create","research"].includes(p.id)?"WIP · Early Access":p.available?"Available":"Setup needed"));
+  const card=el("article","plugin-card");const top=el("div","plugin-card-top");top.append(el("span","plugin-kind",p.kind),el("span","plugin-indicator",["klipy","gif-create","research"].includes(p.id)?"WIP · Available to all":p.available?"Available":"Setup needed"));
   const name=el("h3","",p.name),desc=el("p","",p.desc),status=el("small","plugin-status",p.status);
   const row=el("div","plugin-toggle-row"),label=el("label","plugin-toggle-label","Enable in workspace"),toggle=el("input");toggle.type="checkbox";toggle.checked=settings[p.id]!==false&&p.available;toggle.disabled=!p.available;toggle.addEventListener("change",()=>{const next=read();next[p.id]=toggle.checked;save(next);});
   row.append(label,toggle);card.append(top,name,desc,status,row);grid.append(card);
@@ -128,7 +128,7 @@
  copy.addEventListener("click",async()=>{const text="# "+currentTask+"\n\n"+currentSteps.map(s=>"## "+s.title+" ["+s.status+"]\n\n"+(s.result||s.error||s.instruction)).join("\n\n");try{await navigator.clipboard.writeText(text);copy.textContent="Copied";setTimeout(()=>copy.textContent="Copy full result",1200);}catch{copy.textContent="Clipboard unavailable";}});
  download.addEventListener("click",()=>{const text="# "+currentTask+"\n\n"+currentSteps.map(s=>"## "+s.title+" ["+s.status+"]\n\n"+(s.result||s.error||s.instruction)).join("\n\n");const blob=new Blob([text],{type:"text/markdown;charset=utf-8"});const url=URL.createObjectURL(blob);const a=el("a");a.href=url;a.download="orivane-action-report.md";a.click();URL.revokeObjectURL(url);});
  form.addEventListener("submit",execute);function open(){overlay.hidden=false;document.body.classList.add("action-open");$("currentPage").textContent="Action Studio";renderHistory();input.focus();}function shut(){overlay.hidden=true;document.body.classList.remove("action-open");$("currentPage").textContent="Chat";}
- btn.addEventListener("click",()=>window.orivaneWipGate("Action Studio",open));close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});renderHistory();
+ btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});renderHistory();
 })();
 /* ORIVANE system status, CEO access and live visitor UI */
 (()=>{
@@ -146,11 +146,11 @@
  const items=[
    {id:"chat",name:"AI chat",state:"READY",kind:"ready",detail:"The chat interface and Worker AI route are implemented."},
    {id:"personality",name:"Messenger-style personality",state:"READY",kind:"ready",detail:"Natural conversation, contextual replies, honest uncertainty and a clear AI identity are configured in the live model prompt."},
-   {id:"research",name:"Research / update checking",state:"WIP",kind:"wip",detail:"Early Access only. The Worker can attempt live search when its runtime exposes the search tool; live reliability still needs end-to-end testing."},
-   {id:"actions",name:"Action Studio",state:"WIP",kind:"wip",detail:"Early Access only. Creates plans of up to 6 steps, runs them sequentially, supports stop/retry and exports reports. It currently produces content; it cannot directly edit your files or control other apps."},
+   {id:"research",name:"Research / update checking",state:"WIP",kind:"wip",detail:"Available to all members while in development. The Worker can attempt live search when its runtime exposes the search tool; live reliability still needs end-to-end testing."},
+   {id:"actions",name:"Action Studio",state:"WIP",kind:"wip",detail:"Available to all members while in development. Creates plans of up to 6 steps, runs them sequentially, supports stop/retry and exports reports. It currently produces content; it cannot directly edit your files or control other apps."},
    {id:"projects",name:"Projects workspace",state:"READY",kind:"ready",detail:"Create projects, notes and task lists locally in this browser."},
-   {id:"klipy",name:"GIF Studio (KLIPY + AI GIFs)",state:"WIP",kind:"wip",detail:"Early Access only. GIF search and AI GIF creation are experimental; availability also depends on the connected provider."},
-   {id:"wipaccess",name:"WIP feature access",state:"WIP",kind:"wip",detail:"Research Mode, Action Studio and GIF Studio require a verified Early Access entitlement. Regular accounts see an unlock prompt for the one-time €0.99 pass."},
+   {id:"klipy",name:"GIF Studio (KLIPY + AI GIFs)",state:"WIP",kind:"wip",detail:"Available to all members while in development. GIF search and AI GIF creation are experimental; availability also depends on the connected provider."},
+   {id:"wipaccess",name:"WIP feature access",state:"WIP",kind:"wip",detail:"Future WIP features will require a verified Early Access entitlement. Existing WIP features remain available to all members."},
    {id:"visitors",name:"Live visitor counter",state:"SOON",kind:"soon",detail:"Needs shared server-side presence storage. A local counter would be misleading, so it is not presented as live."},
    {id:"ceo",name:"Secure owner access",state:"WIP",kind:"wip",detail:"JR is reserved and cannot be registered publicly. The owner setup code still needs to be configured before the JR account can be claimed."},
    {id:"passkey",name:"Device-bound verification",state:"SOON",kind:"soon",detail:"Requires a complete WebAuthn/passkey flow, server challenge storage and independent security testing."},
@@ -167,8 +167,8 @@
     const data=await response.json(),s=data.services||{};
     const set=(id,state,kind,detail)=>{const c=cards.get(id);if(!c)return;c.pill.textContent=state;c.pill.className="status-pill "+kind;c.detail.textContent=detail;};
     set("chat",s.aiChat?"READY":"WIP",s.aiChat?"ready":"wip",s.aiChat?"Worker AI binding detected.":"Worker AI binding is not configured.");
-    set("research","WIP","wip",s.webSearch?"Early Access only. Search method is exposed by the Worker runtime; actual search requests still need reliability testing.":"Early Access only. This Worker runtime does not expose the live web-search method yet.");
-    set("klipy","WIP","wip",s.klipy?"Early Access only. KLIPY server key detected; provider requests can be attempted by entitled members.":"Early Access only. Configure the KLIPY server key to enable GIF search for entitled members.");
+    set("research","WIP","wip",s.webSearch?"Available to all members. Search method is exposed by the Worker runtime; actual search requests still need reliability testing.":"Available to all members. This Worker runtime does not expose the live web-search method yet.");
+    set("klipy","WIP","wip",s.klipy?"Available to all members. KLIPY server key detected; provider requests can be attempted.":"Available to all members. Configure the KLIPY server key to enable GIF search.");
     set("profile",s.secureAuth?"WIP":"SOON",s.secureAuth?"wip":"soon",s.secureAuth?"D1 account storage and password/session endpoints are deployed. JR owner setup is still locked; browser cookie persistence and full sign-in flow have not yet been tested end to end.":"Secure account storage is not connected.");
     set("ceo",s.ownerClaimConfigured?"WIP":"SOON",s.ownerClaimConfigured?"wip":"soon",s.ownerClaimConfigured?"The private JR owner-claim setup is configured; role-gated owner tools still need implementation.":"JR is reserved. A private owner-claim secret must be configured before it can be claimed.");
     set("google",s.googleOAuth?"WIP":"SOON",s.googleOAuth?"wip":"soon",s.googleOAuth?"Google OAuth credentials are detected; callback flow still needs verification.":"Google OAuth client ID and secret are not configured.");
