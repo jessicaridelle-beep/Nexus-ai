@@ -74,6 +74,29 @@ export default {
     if (request.method !== "POST") return json({ error: "Use POST to send a chat message." }, 405);
 
     const requestUrl = new URL(request.url);
+    if (requestUrl.searchParams.get("action") === "run-task") {
+      let taskBody;
+      try { taskBody = await request.json(); }
+      catch { return json({ error: "The task must be valid JSON." }, 400); }
+      const task = typeof taskBody.task === "string" ? taskBody.task.trim() : "";
+      if (!task || task.length > 4000) return json({ error: "Enter a task between 1 and 4,000 characters." }, 400);
+      if (!env.AI || typeof env.AI.run !== "function") return json({ error: "The AI task service is not available right now." }, 503);
+      try {
+        const result = await env.AI.run(MODEL, {
+          messages: [
+            { role: "system", content: "You are ORIVANE Action Studio. Complete the user's requested task directly rather than chatting. Produce a useful, clearly structured deliverable. If the task asks for code, provide complete code and explain where it belongs. Do not claim to have edited files, accessed accounts, browsed live sources, deployed anything, or performed external actions. Ask for approval before any consequential external action; in this interface you can only prepare a result for the user to review. Be accurate and age-appropriate." },
+            { role: "user", content: task }
+          ],
+          max_tokens: 1400,
+          temperature: 0.35
+        });
+        const output = result && typeof result.response === "string" ? result.response.trim() : "";
+        if (!output) return json({ error: "The AI did not return a task result." }, 502);
+        return json({ result: output });
+      } catch (error) {
+        return json({ error: error && error.message ? error.message : "The task could not be completed." }, 502);
+      }
+    }
     if (requestUrl.searchParams.get("action") === "create-gif") {
       let createBody;
       try { createBody = await request.json(); }
