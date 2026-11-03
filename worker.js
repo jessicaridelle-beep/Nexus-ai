@@ -79,11 +79,21 @@ async function allowRateLimit(env, request, scope, limit, windowSeconds) {
  try {
   const address=request.headers.get("CF-Connecting-IP")||"unknown";
   const key=await digest(scope+"|"+address);
-  const now=Math.floor(Date.now()/1000),start=now-windowSeconds;
-   await env.DB.prepare("INSERT INTO auth_attempts(attempt_key,count,window_start) VALUES(?,1,?) ON CONFLICT(attempt_key) DO UPDATE SET count=CASE WHEN window_start<=? THEN 1 ELSE count+1 END,window_start=CASE WHEN window_start<=? THEN excluded.window_start ELSE window_start END").bind("rate:"+key,now,start,start).run();
-   const row=await env.DB.prepare("SELECT count FROM auth_attempts WHERE attempt_key=?").bind("rate:"+key).first();
-   return !!row && row.count<=limit;
-  } catch { return false; }
+  const now=Math.floor(Date.now()/1000);
+  const windowStart=Math.floor(now/windowSeconds)*windowSeconds;
+  const attemptKey="rate:"+key;
+  await env.DB.prepare(
+   "INSERT INTO auth_attempts(attempt_key,count,window_start) VALUES(?,1,?) " +
+   "ON CONFLICT(attempt_key) DO UPDATE SET " +
+   "count=CASE WHEN auth_attempts.window_start=excluded.window_start THEN auth_attempts.count+1 ELSE 1 END, " +
+   "window_start=excluded.window_start"
+  ).bind(attemptKey,windowStart).run();
+  const row=await env.DB.prepare("SELECT count FROM auth_attempts WHERE attempt_key=?").bind(attemptKey).first();
+  return !!row && row.count<=limit;
+ } catch (error) {
+  console.error("Rate-limit check failed:",error && error.message ? error.message : error);
+  return false;
+ }
 }
 async function currentUser(request,db) {
  const token=readCookie(request,AUTH_COOKIE); if(!token) return null;
@@ -331,8 +341,8 @@ export default {
       if (!env.AI || typeof env.AI.run !== "function") {
         return json({ error: "The image-generation service is not connected to ORIVANE right now." }, 503);
       }
-      if (!(await allowRateLimit(env, request, "gif-generation", 2, 300))) {
-        return json({ error: "GIF generation is limited to 2 requests every 5 minutes. Please try again shortly." }, 429);
+      if (!(await allowRateLimit(env, request, "gif-generation", 8, 300))) {
+        return json({ error: "GIF generation is limited to 8 requests every 5 minutes per network. Please try again shortly." }, 429);
       }
       const storyboardPrompt =
         "Create a single, clean 3 by 3 animation storyboard sprite sheet, exactly 3 equal columns and 3 equal rows. " +
