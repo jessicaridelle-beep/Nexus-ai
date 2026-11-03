@@ -181,7 +181,9 @@ export default {
           tenor: !!env.TENOR_API_KEY,
           gifGeneration: false,
           visitorCounter: false,
-          secureAuth: !!env.DB
+          secureAuth: !!env.DB,
+          googleOAuth: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+          ownerClaimConfigured: !!env.JR_SETUP_CODE
         },
         checkedAt: new Date().toISOString()
       });
