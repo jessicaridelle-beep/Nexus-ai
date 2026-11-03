@@ -1,7 +1,7 @@
 /* ORIVANE Studios: dashboard, image studio, long-term memory, code studio and local automation. */
 (()=>{
  const $=id=>document.getElementById(id), el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
- const KEYS={memory:"orivane-long-memory-v1",tasks:"orivane-automation-tasks-v1",images:"orivane-image-history-v1",code:"orivane-code-drafts-v1"};
+ const KEYS={memory:"orivane-long-memory-v1",tasks:"orivane-automation-tasks-v1",operations:"orivane-operations-v1",images:"orivane-image-history-v1",code:"orivane-code-drafts-v1"};
  const read=(key,fallback=[])=>{try{const v=JSON.parse(localStorage.getItem(key)||"null");return Array.isArray(v)?v:fallback}catch{return fallback}};
  const write=(key,value)=>localStorage.setItem(key,JSON.stringify(value));
  const modules=[
@@ -9,7 +9,8 @@
   ["image","▧","Image Studio","Generate original images from prompts"],
   ["memory","✧","Long-term Memory","Save useful facts for future chats"],
   ["code","⌘","Code Studio","Write, inspect and improve code"],
-  ["automation","⚡","Automation Studio","Organise repeatable tasks and checklists"]
+  ["automation","⚡","Automation Studio","Organise repeatable tasks and checklists"],
+  ["operations","◎","Operation Studio","Create missions, assign steps and track progress"]
  ];
  const nav=el("div","studio-nav-group");nav.append(el("div","side-label","","")); 
  const anchor=$("projectsOpen"); if(anchor){modules.forEach(([id,icon,name])=>{const b=el("button","side-link studio-nav",icon+" ");b.type="button";b.dataset.studio=id;b.append(el("span","",name));if(id!=="dashboard")b.append(el("span","wip-badge","WIP"));b.addEventListener("click",()=>open(id));anchor.insertAdjacentElement("afterend",b);});}
@@ -41,6 +42,7 @@
   if(id==="memory")return memoryStudio();
   if(id==="code")return codeStudio();
   if(id==="automation")return automationStudio();
+  if(id==="operations")return operationStudio();
  }
  function dashboard(){
   const tasks=read(KEYS.tasks),mem=read(KEYS.memory),drafts=read(KEYS.code),imgs=read(KEYS.images);
@@ -87,6 +89,48 @@
   const drafts=el("div","studio-list");body.append(el("h3","","Saved drafts"),drafts);
   function renderDrafts(){drafts.replaceChildren();read(KEYS.code).forEach((item,i)=>{const row=el("div","studio-list-item"),info=el("div","");info.append(el("b","",item.name),el("small","","Saved "+new Date(item.updated).toLocaleString()));row.append(info,action("Open",()=>{name.value=item.name;code.value=item.code;status.textContent="Draft loaded."}),action("Delete",()=>{const next=read(KEYS.code);next.splice(i,1);write(KEYS.code,next);renderDrafts()},"studio-danger"));drafts.append(row)})}renderDrafts();
  }
+
+ function operationStudio(){
+  body.append(section("MISSION CONTROL","Operation Studio","Turn a goal into a structured operation. Create steps, track progress and keep a clear record of what is done. This version organises work locally; it does not control your device or external apps."));
+  const form=el("form","studio-form"),nameLabel=el("label","","Operation name"),name=el("input","");name.type="text";name.maxLength=90;name.placeholder="e.g. Launch my website";name.required=true;nameLabel.append(name);
+  const goalLabel=el("label","","Main objective"),goal=el("textarea","");goal.rows=3;goal.maxLength=1200;goal.placeholder="What should this operation achieve?";goal.required=true;goalLabel.append(goal);
+  const priorityLabel=el("label","","Priority"),priority=el("select","");priority.innerHTML='<option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option>';priorityLabel.append(priority);
+  const create=el("button","studio-button studio-primary","＋ Create operation");create.type="submit";form.append(nameLabel,goalLabel,priorityLabel,create);body.append(form);
+  const activeHead=el("h3","","Your operations"),list=el("div","studio-list");body.append(activeHead,list);
+  let selected=null;
+  function save(items){write(KEYS.operations,items.slice(0,50));}
+  function render(){
+   list.replaceChildren();const items=read(KEYS.operations);
+   if(!items.length){list.append(el("p","studio-empty","No operations yet. Create your first mission above."));return;}
+   items.forEach((op,index)=>{
+    const card=el("article","studio-operation-card"),top=el("div","studio-operation-top"),info=el("div","");info.append(el("b","",op.name),el("small","",op.priority.toUpperCase()+" PRIORITY · "+new Date(op.updatedAt||op.createdAt).toLocaleDateString()));
+    const done=(op.steps||[]).filter(x=>x.done).length,total=(op.steps||[]).length;top.append(info,el("span","studio-operation-count",done+"/"+total));card.append(top,el("p","studio-operation-goal",op.goal));
+    const bar=el("div","studio-operation-progress"),fill=el("span","");fill.style.width=(total?Math.round(done/total*100):0)+"%";bar.append(fill);card.append(bar);
+    const actions=el("div","studio-form-row");actions.append(action("Open",()=>edit(op.id)),action("Delete",()=>{if(!confirm("Delete this operation?"))return;const next=read(KEYS.operations);next.splice(index,1);save(next);render()},"studio-danger"));card.append(actions);list.append(card);
+   });
+  }
+  function edit(id){
+   const op=read(KEYS.operations).find(x=>x.id===id);if(!op)return;selected=id;body.replaceChildren();
+   const intro=section("OPERATION BRIEF",op.name,op.goal);body.append(intro);
+   const meta=el("div","studio-operation-meta");meta.append(el("span","",op.priority.toUpperCase()+" PRIORITY"),el("span","",new Date(op.createdAt).toLocaleString()));body.append(meta);
+   const addForm=el("form","studio-form"),step=el("input","");step.type="text";step.maxLength=220;step.placeholder="Add an operation step…";step.required=true;const add=el("button","studio-button studio-primary","＋ Add step");add.type="submit";addForm.append(step,add);body.append(addForm);
+   const steps=el("div","studio-task-list");body.append(steps);
+   function draw(){
+    steps.replaceChildren();const latest=read(KEYS.operations).find(x=>x.id===id);if(!latest)return;
+    if(!latest.steps.length)steps.append(el("p","studio-empty","No steps yet. Add the first step above."));
+    latest.steps.forEach((item,i)=>{const row=el("div","studio-task"),check=el("input","");check.type="checkbox";check.checked=!!item.done;check.addEventListener("change",()=>{const all=read(KEYS.operations),target=all.find(x=>x.id===id);target.steps[i].done=check.checked;target.updatedAt=Date.now();save(all);draw()});row.append(check,el("span",item.done?"is-done":"",item.text),action("×",()=>{const all=read(KEYS.operations),target=all.find(x=>x.id===id);target.steps.splice(i,1);target.updatedAt=Date.now();save(all);draw()},"studio-danger"));steps.append(row)});
+    const done=latest.steps.filter(x=>x.done).length;progress.textContent=done+" of "+latest.steps.length+" steps completed."; 
+   }
+   const progress=el("p","studio-status","");body.append(progress);
+   addForm.addEventListener("submit",e=>{e.preventDefault();const value=step.value.trim();if(!value)return;const all=read(KEYS.operations),target=all.find(x=>x.id===id);target.steps.push({text:value,done:false});target.updatedAt=Date.now();save(all);step.value="";draw()});
+   body.append(action("← All operations",()=>{selected=null;body.replaceChildren();title.textContent="Operation Studio";subtitle.textContent="Create missions, assign steps and track progress";renderOperationsHome()}));
+   draw();
+  }
+  function renderOperationsHome(){body.append(section("MISSION CONTROL","Your operations","Create and manage structured missions."));body.append(form,list);render();}
+  form.addEventListener("submit",e=>{e.preventDefault();const n=name.value.trim(),g=goal.value.trim();if(!n||!g)return;const items=read(KEYS.operations);items.unshift({id:"op-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),name:n,goal:g,priority:priority.value,steps:[],createdAt:Date.now(),updatedAt:Date.now()});save(items);name.value="";goal.value="";priority.value="normal";render()});
+  render();
+ }
+
  function automationStudio(){
   body.append(section("PERSONAL AUTOMATION","Automation Studio","Build a simple task checklist and track repeatable workflows. These tasks do not control external apps automatically."));
   const form=el("form","studio-form"),input=el("input","");input.type="text";input.maxLength=160;input.placeholder="Add a task or workflow step…";input.required=true;const add=el("button","studio-button studio-primary","＋ Add task");add.type="submit";form.append(input,add);body.append(form);const list=el("div","studio-task-list");body.append(list);
