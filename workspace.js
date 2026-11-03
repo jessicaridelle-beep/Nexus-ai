@@ -91,38 +91,42 @@
 })();
 
 
-/* ORIVANE Action Studio — task-first workspace, separate from chat */
+/* ORIVANE Action Studio — planned, sequential task execution */
 (()=>{
- const $=id=>document.getElementById(id);
- const el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
- const sidebar=$("sidebar"); if(!sidebar)return;
- const btn=el("button","side-link","⚡ Action Studio");btn.type="button";btn.id="actionStudioOpen";
- const anchor=$("projectsOpen");if(anchor)anchor.insertAdjacentElement("afterend",btn);
- const overlay=el("div","action-overlay");overlay.id="actionStudio";overlay.hidden=true;
- const modal=el("section","action-modal");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","actionStudioTitle");
- const head=el("div","action-head"),titles=el("div","");
- titles.append(el("div","action-eyebrow","TASK-FIRST WORKSPACE"),el("h2","","Action Studio"),el("p","","Give ORIVANE a task. Get a result without sending a chat message."));
+ const $=id=>document.getElementById(id),el=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n;};
+ const sidebar=$("sidebar");if(!sidebar)return;const STORE="orivane-action-history-v2",API="https://nexus-ai-api.jessicaridelle.workers.dev/";
+ const read=()=>{try{const v=JSON.parse(localStorage.getItem(STORE)||"[]");return Array.isArray(v)?v:[]}catch{return[];}},save=items=>localStorage.setItem(STORE,JSON.stringify(items.slice(0,20)));
+ const btn=el("button","side-link","⚡ Action Studio");btn.type="button";btn.id="actionStudioOpen";const anchor=$("projectsOpen");if(anchor)anchor.insertAdjacentElement("afterend",btn);
+ const overlay=el("div","action-overlay");overlay.id="actionStudio";overlay.hidden=true;const modal=el("section","action-modal action-modal-expanded");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-labelledby","actionStudioTitle");
+ const head=el("div","action-head"),titles=el("div","");titles.append(el("div","action-eyebrow","TASK ORCHESTRATION"),el("h2","","Action Studio"),el("p","","Plan a task, execute it step by step, and keep the results."));
  const close=el("button","workspace-close","×");close.type="button";close.setAttribute("aria-label","Close Action Studio");head.append(titles,close);
- const form=el("form","action-form"),label=el("label","","What should ORIVANE do?");label.htmlFor="actionTaskInput";
- const input=el("textarea","");input.id="actionTaskInput";input.rows=5;input.maxLength=4000;input.placeholder="Example: Create a polished landing page for a space exploration club…";input.required=true;
- const controls=el("div","action-controls"),run=el("button","workspace-primary","⚡ Run task");run.type="submit";const hint=el("small","action-hint","Runs separately from chat. Results are prepared for review; external changes are not made.");controls.append(hint,run);form.append(label,input,controls);
- const status=el("div","action-status","Ready when you are.");status.setAttribute("role","status");
- const result=el("section","action-result");result.hidden=true;result.append(el("h3","","Task result"));const output=el("pre","action-output");result.append(output);
- const copy=el("button","workspace-secondary","Copy result");copy.type="button";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(output.textContent);copy.textContent="Copied";setTimeout(()=>copy.textContent="Copy result",1200);}catch{copy.textContent="Clipboard unavailable";}});
- result.append(copy);
- modal.append(head,form,status,result);overlay.append(modal);document.body.append(overlay);
- async function execute(e){e.preventDefault();const task=input.value.trim();if(!task)return;run.disabled=true;run.textContent="Working…";status.textContent="Running your task…";result.hidden=true;
-  try{const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=run-task",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({task})});let data;try{data=await response.json();}catch{throw new Error("The task service returned an unreadable response.");}if(!response.ok)throw new Error(data.error||"The task could not be completed.");output.textContent=data.result;result.hidden=false;status.textContent="Task completed. Review the result below before using it.";}
-  catch(err){status.textContent=err.message||"Task failed. Try again.";}
-  finally{run.disabled=false;run.textContent="⚡ Run task";}
+ const layout=el("div","action-layout"),main=el("div","action-main"),rail=el("aside","action-history"),form=el("form","action-form"),label=el("label","","Describe the outcome you want");label.htmlFor="actionTaskInput";
+ const input=el("textarea","");input.id="actionTaskInput";input.rows=4;input.maxLength=4000;input.placeholder="Example: Plan and draft a complete website for a space exploration club…";input.required=true;
+ const controls=el("div","action-controls"),hint=el("small","action-hint","ORIVANE plans up to 6 steps. You can stop between steps or retry failures."),run=el("button","workspace-primary","⚡ Plan & run");run.type="submit";controls.append(hint,run);form.append(label,input,controls);
+ const status=el("div","action-status","Ready when you are.");status.setAttribute("role","status");const progress=el("div","action-progress");progress.hidden=true;const stepList=el("ol","action-steps");progress.append(el("h3","","Execution plan"),stepList);
+ const result=el("section","action-result");result.hidden=true;result.append(el("h3","","Work completed"));const output=el("div","action-output action-output-rich");result.append(output);
+ const actionBar=el("div","action-result-actions"),copy=el("button","workspace-secondary","Copy full result"),stop=el("button","workspace-secondary","Stop after current step");copy.type=stop.type="button";stop.hidden=true;actionBar.append(copy,stop);result.append(actionBar);
+ const historyTitle=el("h3","","Task history"),historyList=el("div","action-history-list");rail.append(historyTitle,historyList);main.append(form,status,progress,result);layout.append(main,rail);modal.append(head,layout);overlay.append(modal);document.body.append(overlay);
+ let active=null,currentTask="",currentSteps=[],stopRequested=false;
+ const renderHistory=()=>{historyList.replaceChildren();const items=read();if(!items.length){historyList.append(el("p","action-empty","Completed tasks will appear here."));return;}items.forEach(item=>{const b=el("button","action-history-item");b.type="button";b.append(el("b","",item.task.slice(0,72)),el("small","",new Date(item.updatedAt).toLocaleString()),el("span","",item.state==="completed"?"Completed":item.state==="stopped"?"Stopped":"Needs attention"));b.addEventListener("click",()=>loadHistory(item.id));historyList.append(b);});};
+ function renderSteps(){stepList.replaceChildren();currentSteps.forEach((step,index)=>{const li=el("li","action-step "+step.status),top=el("div","action-step-top");top.append(el("b","",step.title),el("span","action-step-state",step.status.toUpperCase()));li.append(top,el("p","",step.instruction));if(step.result)li.append(el("pre","action-step-result",step.result));if(step.error)li.append(el("p","action-step-error",step.error));if(step.status==="failed"){const retry=el("button","workspace-secondary action-retry","Retry step");retry.type="button";retry.addEventListener("click",()=>runOne(index));li.append(retry);}stepList.append(li);});}
+ function renderResults(){output.replaceChildren();currentSteps.filter(s=>s.result).forEach(step=>{const section=el("section","action-output-section");section.append(el("h4","",step.title),el("pre","",step.result));output.append(section);});}
+ function persist(state){const items=read(),id=active?.id||("task-"+Date.now()),record={id,task:currentTask,state,steps:currentSteps,updatedAt:new Date().toISOString()},index=items.findIndex(x=>x.id===id);if(index>=0)items[index]=record;else items.unshift(record);save(items);if(active)active.id=id;renderHistory();}
+ function loadHistory(id){const item=read().find(x=>x.id===id);if(!item)return;stopRequested=true;if(active?.controller)active.controller.abort();active=null;currentTask=item.task;currentSteps=item.steps||[];input.value=currentTask;progress.hidden=false;result.hidden=!currentSteps.some(s=>s.result);renderSteps();renderResults();status.textContent="Loaded saved task: "+item.state+".";run.textContent="Resume task";run.disabled=false;stop.hidden=true;}
+ async function request(action,payload,signal){const response=await fetch(API+"?action="+action,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal});let data;try{data=await response.json();}catch{throw new Error("The task service returned an unreadable response.");}if(!response.ok)throw new Error(data.error||"The task request failed.");return data;}
+ async function runOne(index){const step=currentSteps[index];if(!step)return false;step.status="running";step.error="";renderSteps();result.hidden=true;status.textContent="Working on step "+(index+1)+" of "+currentSteps.length+": "+step.title;const controller=new AbortController();if(active)active.controller=controller;
+  try{const data=await request("run-step",{task:currentTask,step:{title:step.title,instruction:step.instruction},previousResults:currentSteps.slice(0,index).filter(s=>s.result).map(s=>({title:s.title,result:s.result}))},controller.signal);step.result=data.result;step.status="completed";step.error="";renderSteps();renderResults();result.hidden=false;persist("running");status.textContent="Step "+(index+1)+" completed.";return true;}
+  catch(error){if(error.name==="AbortError"){step.status="pending";status.textContent="Stopped. Completed work is saved.";}else{step.status="failed";step.error=error.message;status.textContent="Step "+(index+1)+" failed. You can retry it.";}renderSteps();persist(error.name==="AbortError"?"stopped":"needs-attention");return false;}
  }
- form.addEventListener("submit",execute);
- function open(){overlay.hidden=false;document.body.classList.add("action-open");$("currentPage").textContent="Action Studio";input.focus();}
- function shut(){overlay.hidden=true;document.body.classList.remove("action-open");$("currentPage").textContent="Chat";}
- btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
+ async function execute(e){e.preventDefault();const task=input.value.trim();if(!task||active)return;currentTask=task;currentSteps=[];stopRequested=false;active={id:"task-"+Date.now(),controller:null};run.disabled=true;run.textContent="Planning…";stop.hidden=false;progress.hidden=false;result.hidden=true;stepList.replaceChildren();status.textContent="Creating a step-by-step plan…";
+  try{const plan=await request("plan-task",{task});currentSteps=plan.steps.map(s=>({...s,status:"pending",result:"",error:""}));renderSteps();persist("running");status.textContent="Plan ready. Starting execution…";for(let i=0;i<currentSteps.length;i++){if(stopRequested)break;const ok=await runOne(i);if(!ok)break;}if(stopRequested){persist("stopped");status.textContent="Stopped. Your completed steps are saved.";}else if(currentSteps.every(s=>s.status==="completed")){persist("completed");status.textContent="All "+currentSteps.length+" steps completed.";}}
+  catch(error){status.textContent=error.message||"Planning failed. Retry the task.";}finally{active=null;run.disabled=false;run.textContent="⚡ Plan & run";stop.hidden=true;renderHistory();}
+ }
+ stop.addEventListener("click",()=>{stopRequested=true;if(active?.controller)active.controller.abort();else status.textContent="Will stop after the current operation.";});
+ copy.addEventListener("click",async()=>{const text=currentSteps.filter(s=>s.result).map(s=>"# "+s.title+"\n\n"+s.result).join("\n\n");try{await navigator.clipboard.writeText(text);copy.textContent="Copied";setTimeout(()=>copy.textContent="Copy full result",1200);}catch{copy.textContent="Clipboard unavailable";}});
+ form.addEventListener("submit",execute);function open(){overlay.hidden=false;document.body.classList.add("action-open");$("currentPage").textContent="Action Studio";renderHistory();input.focus();}function shut(){overlay.hidden=true;document.body.classList.remove("action-open");$("currentPage").textContent="Chat";}
+ btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});renderHistory();
 })();
-
-
 /* ORIVANE system status, CEO access and live visitor UI */
 (()=>{
  const $=id=>document.getElementById(id);
