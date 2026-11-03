@@ -1,5 +1,6 @@
 const SITE_ORIGIN = "https://jessicaridelle-beep.github.io";
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+const GIF_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const ORIVANE_VERSION = "2026.11.03";
 
 const PROJECT_REPO = "jessicaridelle-beep/Nexus-ai";
@@ -199,7 +200,7 @@ export default {
           webSearch: !!(env.AI && typeof env.AI.websearch === "function"),
           klipy: !!env.KLIPY_APP_KEY,
           tenor: !!env.TENOR_API_KEY,
-          gifGeneration: false,
+          gifGeneration: !!(env.AI && typeof env.AI.run === "function"),
           visitorCounter: false,
           secureAuth: secureAuthReady,
           googleOAuth: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
@@ -208,7 +209,7 @@ export default {
         checkedAt: new Date().toISOString()
       });
       }
-      if (action === "create-gif") return json({ error: "The creator interface is installed, but no callable GIF-generation API is connected yet. The ChatGPT GifGen tool cannot be invoked directly by a public website; a provider API and server secret are required." }, 503);
+      if (action === "create-gif") return json({ error: "Use POST to generate a GIF." }, 405);
       if (action === "klipy-gifs") {
         if (!env.KLIPY_APP_KEY) return json({ error: "KLIPY is not configured on the ORIVANE Worker yet." }, 503);
         const query = (url.searchParams.get("q") || "").trim().slice(0, 80);
@@ -320,12 +321,48 @@ export default {
       let createBody;
       try { createBody = await request.json(); }
       catch { return json({ error: "The GIF prompt must be valid JSON." }, 400); }
-      if (typeof createBody.prompt !== "string" || !createBody.prompt.trim() || createBody.prompt.length > 500) {
+      const prompt = typeof createBody.prompt === "string" ? createBody.prompt.trim() : "";
+      if (!prompt || prompt.length > 500) {
         return json({ error: "Enter a GIF prompt between 1 and 500 characters." }, 400);
       }
-      return json({
-        error: "The Create GIF screen is ready, but no GIF-generation provider is connected yet. The ChatGPT GifGen tool is not callable from this website. Connect a GIF-generation API to enable creation."
-      }, 503);
+      if (/\b(?:porn(?:ography)?|nude|naked|sexual|explicit|erotic|genitals|gore|gory|dismember(?:ment)?|beheading|self[- ]?harm|suicide)\b/i.test(prompt)) {
+        return json({ error: "Please use a non-explicit, non-graphic prompt for GIF generation." }, 422);
+      }
+      if (!env.AI || typeof env.AI.run !== "function") {
+        return json({ error: "The image-generation service is not connected to ORIVANE right now." }, 503);
+      }
+      if (!(await allowRateLimit(env, request, "gif-generation", 2, 300))) {
+        return json({ error: "GIF generation is limited to 2 requests every 5 minutes. Please try again shortly." }, 429);
+      }
+      const storyboardPrompt =
+        "Create a single, clean 3 by 3 animation storyboard sprite sheet, exactly 3 equal columns and 3 equal rows. " +
+        "Each cell is one consecutive animation frame, read left to right, top to bottom. " +
+        "Show the same subject and scene in every cell, with clearly changing poses or movement from frame to frame. " +
+        "Keep the subject fully inside each cell, with consistent character design, camera angle, lighting, and background. " +
+        "Separate the nine square cells with thin, clear gutters. No captions, lettering, numbers, watermarks, borders around the outside, or extra panels. " +
+        "Animation to depict: " + prompt;
+      try {
+        const generated = await env.AI.run(GIF_MODEL, {
+          prompt: storyboardPrompt,
+          steps: 4
+        });
+        const image = generated && typeof generated.image === "string" ? generated.image : "";
+        if (!image || image.length > 6000000) {
+          console.error("GIF image model returned no image or an unexpectedly large image.");
+          return json({ error: "The image model did not return a usable storyboard. Please try a simpler prompt." }, 502);
+        }
+        return json({
+          image_data_url: "data:image/jpeg;base64," + image,
+          mime_type: "image/jpeg",
+          grid: { columns: 3, rows: 3 },
+          frame_count: 9,
+          frame_delay_ms: 120,
+          model: GIF_MODEL
+        });
+      } catch (error) {
+        console.error("ORIVANE GIF generation failed:", error && error.message ? error.message : error);
+        return json({ error: "ORIVANE couldn't generate those frames just now. Try a shorter or simpler prompt." }, 502);
+      }
     }
 
     if (!(await allowRateLimit(env, request, "chat", 24, 300))) return json({error:"ORIVANE chat is temporarily rate-limited. Please try again in five minutes."},429);
