@@ -89,3 +89,21 @@
 .gif-share{margin-right:auto}
 
 .assistant-message-content{margin-top:6px;color:#c2c9d6;font-size:13px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}.assistant-message-content .chat-gif{display:block;max-width:min(320px,100%);max-height:240px;border-radius:10px;margin-top:8px}.light .assistant-message-content{color:#394450}
+
+
+/* ORIVANE 2.3 local history and prompt tools */
+.history-heading{font-size:9px;letter-spacing:1.7px;color:#687286;padding:22px 11px 9px}
+.chat-history{display:flex;flex-direction:column;gap:4px;max-height:34vh;overflow:auto}
+.history-item{display:flex;align-items:center;gap:4px;min-width:0}
+.history-open{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;background:transparent;border:0;border-radius:7px;padding:8px;color:var(--muted);font-size:11px}
+.history-open:hover,.history-delete:hover{background:#ffffff0c;color:var(--text)}
+.history-delete{border:0;background:transparent;color:var(--muted);border-radius:6px;padding:5px 8px}
+.chat-toolbar{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:7px;margin:0 0 12px}
+.chat-toolbar button{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:8px;padding:8px 10px;font-size:10px}
+.chat-toolbar button:hover{border-color:#ff8a3277;color:var(--text)}
+.prompt-library-list{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow:auto}
+.prompt-library-item{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid var(--line);border-radius:9px}
+.prompt-library-item button{background:transparent;border:0;color:var(--text);font-size:12px}
+.prompt-library-item .prompt-use{flex:1;text-align:left;overflow-wrap:anywhere}
+.prompt-library-item button:last-child{color:var(--accent);font-size:10px}
+@media(max-width:700px){.chat-toolbar{justify-content:center}.chat-toolbar button{font-size:9px;padding:7px}.chat-history{max-height:22vh}}
