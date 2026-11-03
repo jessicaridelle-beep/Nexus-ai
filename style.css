@@ -179,3 +179,6 @@ button{touch-action:manipulation}
 #gifButton[aria-expanded="true"]{border-color:var(--accent);background:#ff8a3220;color:var(--accent)}
 @media(max-width:650px){.gif-results{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:48vh}.gif-picker{padding:12px}.gif-search-form button{min-width:74px}}
 @media(max-width:380px){.gif-results{grid-template-columns:repeat(2,minmax(0,1fr))}.gif-categories{gap:5px}.gif-categories button{font-size:10px;padding:6px 9px}}
+
+/* KLIPY setup and attribution */
+.gif-picker-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.gif-setup-button{min-height:38px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--text);font-size:12px;font-weight:700}.gif-setup-button:hover,.gif-setup-button:focus-visible{border-color:var(--accent);outline:2px solid transparent}.gif-attribution{font-size:10px;color:var(--muted)}
