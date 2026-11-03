@@ -172,8 +172,8 @@
    }catch{statusNote.textContent="Live status check failed. Showing the last known feature notes; this does not mean every service is offline.";}
   }
   const security=el("section","status-security");security.append(el("h3","","CEO security gate"),el("p","","CEO access is currently disabled. Requests made from this site are denied until a real authentication system is configured and independently verified."),el("div","status-denied","CEO ACCESS: DENIED · AUTHENTICATION NOT CONFIGURED"),el("small","","Do not enter passwords, recovery codes, or private account details here. This page does not collect them."));
- const footer=el("p","status-footer","Status labels: READY = usable feature · WIP = coded but incomplete or provider-dependent · SOON = not yet usable.");
- modal.append(head,grid,security,footer);overlay.append(modal);document.body.append(overlay);
+ const footer=el("p","status-footer","Status labels: READY = implemented and configured · WIP = incomplete, unverified or provider-dependent · SOON = not yet usable. Live checks verify configuration, not full upstream uptime.");
+ modal.append(head,grid,security,statusNote,footer);overlay.append(modal);document.body.append(overlay);
  function open(){overlay.hidden=false;document.body.classList.add("status-open");$("currentPage").textContent="System status";close.focus();refreshStatus();}
  function shut(){overlay.hidden=true;document.body.classList.remove("status-open");$("currentPage").textContent="Chat";}
  btn.addEventListener("click",open);close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)shut();});
