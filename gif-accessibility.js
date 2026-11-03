@@ -6,7 +6,7 @@
   try{
    const u=new URL(cleanUrl(raw)),host=u.hostname.toLowerCase(),path=u.pathname.toLowerCase();
    if(u.protocol!=="https:")return null;
-   if((host==="media.tenor.com"||host==="media.giphy.com"||host.endsWith(".giphy.com")||host.endsWith(".tenor.com"))&&/\.(gif|webp|mp4|webm)$/.test(path))return {type:/\.(mp4|webm)$/.test(path)?"video":"image",url:u.href};
+   if((host==="media.tenor.com"||host==="media.giphy.com"||host==="static.klipy.com"||host==="static1.klipy.com"||host==="static2.klipy.com"||host.endsWith(".giphy.com")||host.endsWith(".tenor.com")||host.endsWith(".klipy.com"))&&/\.(gif|webp|mp4|webm)$/.test(path))return {type:/\.(mp4|webm)$/.test(path)?"video":"image",url:u.href};
    if(host==="tenor.com"||host.endsWith(".tenor.com")){
     const id=u.pathname.split("/").filter(Boolean).reverse().find(x=>/^\d+$/.test(x));
     if(id)return {type:"embed",url:"https://tenor.com/embed/"+id,source:u.href};
