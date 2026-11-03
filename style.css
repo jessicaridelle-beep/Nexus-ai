@@ -6,3 +6,13 @@
 @media(prefers-reduced-motion:no-preference){.orb-core{animation:float 5s ease-in-out infinite}@keyframes float{50%{transform:translateY(-5px)}}}
 /* ORIVANE orange brand override */
 :root{--accent:#ff8a32;--accent2:#ffc16e}.brand-mark,.orb-core,.message-icon{color:#ff9a45;border-color:#ff8a3277}.orb-ring{border-color:#ff8a3240}.ring-two{border-color:#ffc16e55}.side-link.active{box-shadow:inset 2px 0 #ff8a32}.suggestion:hover{border-color:#ff8a3277}.chat-form:focus-within{border-color:#ff8a3288}.message-icon{background:#2b1c13;border-color:#ff8a3240}.composer-bottom button{background:linear-gradient(130deg,#ff8a32,#ffc16e)}.light .message-icon{background:#fff0e3}
+
+/* ORIVANE 2.0: playful composer + reliable orange branding */
+.composer-tools{display:flex;align-items:center;gap:7px}
+.composer-tools .tool-button{height:32px;min-width:34px;padding:0 9px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--text);font-size:16px}
+.composer-tools .gif-button{font-size:10px;font-weight:800;letter-spacing:.5px;color:var(--accent);border-color:#ff8a3266}
+.composer-tools .tool-button:hover{background:#ff8a321c;border-color:#ff8a32}
+.chat-content .assistant-message:last-child .message-body p{animation:message-in .2s ease-out}
+@keyframes message-in{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.brand-mark svg,.orb-core svg{filter:drop-shadow(0 0 4px #ff8a3240)}
+@media(max-width:420px){.composer-tools{gap:4px}.composer-tools .tool-button{min-width:30px;padding:0 6px}.composer-bottom{font-size:9px}}
