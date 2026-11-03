@@ -59,33 +59,6 @@
    render(items);
   }catch(error){if(thisRequest===requestNo)status.textContent=(error.message||"Couldn't load GIFs.")+" Your chat still works; the site owner needs to configure the KLIPY key on the Worker.";}
  }
- const importButton=$("gifImportButton"),importInput=$("gifImportInput"),importPreview=$("gifImportPreview");
- let importedGif=null,importObjectUrl="";
- if(importButton&&importInput&&importPreview){
-  importButton.addEventListener("click",()=>importInput.click());
-  importInput.addEventListener("change",()=>{
-   const file=importInput.files&&importInput.files[0];
-   importedGif=null;
-   if(importObjectUrl)URL.revokeObjectURL(importObjectUrl);
-   importObjectUrl="";
-   importPreview.replaceChildren();
-   if(!file)return;
-   if(file.type!=="image/gif"||file.size>12*1024*1024){
-    const message=document.createElement("p");
-    message.textContent=file.type!=="image/gif"?"Choose an animated .gif file.":"That GIF is too large. The limit is 12 MB.";
-    importPreview.append(message);importPreview.hidden=false;return;
-   }
-   importedGif=file;importObjectUrl=URL.createObjectURL(file);
-   const image=document.createElement("img");image.src=importObjectUrl;image.alt="GIF ready to import";
-   const info=document.createElement("p");info.textContent=file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB";
-   const send=document.createElement("button");send.type="button";send.textContent="Send GIF to chat";
-   send.addEventListener("click",()=>{
-    if(!importedGif||typeof window.sendLocalGif!=="function"){status.textContent="The chat isn't ready to receive this GIF.";return;}
-    if(window.sendLocalGif(importedGif)){importPreview.hidden=true;importPreview.replaceChildren();importInput.value="";importedGif=null;if(importObjectUrl)URL.revokeObjectURL(importObjectUrl);importObjectUrl="";show(false);}
-   });
-   importPreview.append(image,info,send);importPreview.hidden=false;
-  });
- }
  const creator=$("gifCreateView"),openCreator=$("openGifCreator"),backCreator=$("gifCreatorBack"),createForm=$("gifCreateForm"),createPrompt=$("gifCreatePrompt"),createSubmit=$("gifCreateSubmit"),createStatus=$("gifCreateStatus"),createResult=$("gifCreateResult"),createPreview=$("gifCreatePreview");
  let generatedGifUrl="";
  function showCreator(open){creator.hidden=!open;form.hidden=open;grid.hidden=open;status.hidden=open;panel.querySelector(".gif-categories").hidden=open;panel.querySelector(".gif-create-entry").hidden=open;if(open)createPrompt.focus();}
