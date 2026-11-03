@@ -13,10 +13,10 @@ The GitHub Pages site is the public front end. The AI runs in a separate Cloudfl
 This setup requires a Cloudflare account and acceptance of Cloudflare's current AI service terms and limits. Ask a parent or guardian to help with account creation and review any usage or billing settings. Do not add a payment method or enable paid usage unless they approve it.
 
 1. Sign in to the Cloudflare dashboard.
-2. Open **Workers & Pages** and create a Worker named `orivane-api`.
-3. Deploy the contents of `worker.js` as the Worker code. Keep the Worker name as `orivane-api`.
+2. Open **Workers & Pages** and create a Worker named `nexus-ai-api`.
+3. Deploy the contents of `worker.js` as the Worker code. Keep the Worker name as `nexus-ai-api`.
 4. In the Worker settings, open **Bindings** and add an **AI** binding with the variable name `AI`. Save and redeploy.
-5. Copy the Worker URL. It should look like `https://orivane-api.YOUR-SUBDOMAIN.workers.dev`.
+5. Copy the Worker URL. It should look like `https://nexus-ai-api.YOUR-SUBDOMAIN.workers.dev`.
 6. In this repository, open `script.js` and replace the empty string in `const NEXUS_API_URL = "";` with your Worker URL. Keep the quotation marks. Commit the change.
 7. Wait for GitHub Pages to publish, then refresh the website and test a simple question.
 
