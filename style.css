@@ -425,3 +425,10 @@ body.studio-open,body.workspace-open,body.action-open{overflow:hidden}
  .studio-modal,.workspace-modal,.action-modal,.status-modal,.plugin-modal{width:100%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);margin:0 auto}
  .studio-body{padding-bottom:max(22px,env(safe-area-inset-bottom))}
 }
+
+/* Dashboard scroll arrows */
+.studio-modal{position:relative}
+.studio-scroll-controls{position:absolute;right:16px;bottom:16px;z-index:5;display:flex;flex-direction:column;gap:8px}
+.studio-scroll-arrow{width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:var(--panel);color:var(--text);font-size:23px;font-weight:800;box-shadow:0 4px 18px #0005;cursor:pointer}
+.studio-scroll-arrow:disabled{opacity:.25;cursor:default}
+.studio-dashboard-body{padding-bottom:76px}
