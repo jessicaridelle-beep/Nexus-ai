@@ -80,3 +80,31 @@ document.getElementById("voiceInput")?.addEventListener("click",()=>{
  recognition.onend=()=>b.classList.remove("mode-active");
  try{recognition.start();}catch{b.classList.remove("mode-active");chatNote.textContent="Voice input couldn't start. Try again.";}
 });
+
+/* ORIVANE Early Access UI — fail closed until server-verified payment is configured */
+(()=>{
+ const overlay=document.getElementById("earlyAccessOverlay");
+ const open=document.getElementById("earlyAccessOpen");
+ const close=document.getElementById("earlyAccessClose");
+ const buy=document.getElementById("earlyAccessBuy");
+ const status=document.getElementById("earlyAccessAccountStatus");
+ if(!overlay||!open||!close||!buy||!status)return;
+ const api="https://nexus-ai-api.jessicaridelle.workers.dev/";
+ function show(){overlay.hidden=false;document.body.style.overflow="hidden";refresh();}
+ function hide(){overlay.hidden=true;document.body.style.overflow="";}
+ async function refresh(){
+  status.textContent="Checking secure account and purchase status…";
+  buy.disabled=true;buy.textContent="Checkout not configured yet";
+  try{
+   const r=await fetch(api+"?action=early-access-status",{credentials:"include",cache:"no-store"});
+   const d=await r.json();
+   if(!r.ok)throw new Error(d.error||"Status unavailable.");
+   status.textContent=d.authenticated?(d.earlyAccess?"✓ Early Access is active on this account.":"Signed in as "+d.username+". No verified Early Access purchase is linked to this account."):"Sign in to link Early Access to your ORIVANE account.";
+   if(d.checkoutReady){buy.disabled=!d.authenticated||d.earlyAccess;buy.textContent=d.earlyAccess?"Early Access unlocked":"Get Early Access · €0.99";}
+  }catch{status.textContent="Secure purchase verification is not configured yet. No payment can be made at this time.";}
+ }
+ open.addEventListener("click",show);close.addEventListener("click",hide);
+ overlay.addEventListener("click",e=>{if(e.target===overlay)hide();});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!overlay.hidden)hide();});
+ window.orivaneEarlyAccess={refresh,hasAccess:async()=>{try{const r=await fetch(api+"?action=early-access-status",{credentials:"include",cache:"no-store"});const d=await r.json();return !!(r.ok&&d.earlyAccess===true);}catch{return false;}}};
+})();
