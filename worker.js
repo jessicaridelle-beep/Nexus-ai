@@ -121,14 +121,25 @@ async function verifyStripeSignature(rawBody, signatureHeader, secret) {
   return false;
 }
 
+function isAllowedSiteOrigin(origin) {
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === "https:" && parsed.hostname === "jessicaridelle-beep.github.io";
+  } catch {
+    return false;
+  }
+}
+
 function corsHeaders(origin) {
+  const allowed = isAllowedSiteOrigin(origin);
   return {
-    "Access-Control-Allow-Origin": origin === SITE_ORIGIN ? SITE_ORIGIN : "null",
+    "Access-Control-Allow-Origin": allowed ? new URL(origin).origin : "null",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
     "Cache-Control": "no-store",
-    "Access-Control-Allow-Credentials": origin === SITE_ORIGIN ? "true" : "false"
+    "Access-Control-Allow-Credentials": allowed ? "true" : "false"
   };
 }
 
