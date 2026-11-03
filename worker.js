@@ -18,21 +18,21 @@ async function readPublicProjectFile(path) {
 
 async function getOrivaneProjectContext(question) {
   const q = String(question || "").toLowerCase();
-  const wantsCode = /\\b(code|source|script|html|css|javascript|worker|backend|frontend|file|function|implementation|bug|error|fix|website|site|version|build|release|how.*work|what.*built)\\b|\\b(mon code|mon site|mon site web|version|fichier|code source|fonctionnement|corrige|bug)\\b/i.test(q);
+  const wantsCode = /\b(code|source|script|html|css|javascript|worker|backend|frontend|file|function|implementation|bug|error|fix|website|site|version|build|release|how.*work|what.*built)\b|\b(mon code|mon site|mon site web|version|fichier|code source|fonctionnement|corrige|bug)\b/i.test(q);
   if (!wantsCode) return "";
   const selected = new Set(["index.html"]);
-  if (/\\b(worker|backend|api|server|model|search|ai|version|deployment)\\b/i.test(q)) selected.add("worker.js");
-  if (/\\b(script|javascript|frontend|chat|message|memory|browser)\\b/i.test(q)) selected.add("script.js");
-  if (/\\b(style|css|design|theme|layout)\\b/i.test(q)) selected.add("style.css");
-  if (/\\b(project|workspace|action studio|status|wip|soon)\\b/i.test(q)) selected.add("workspace.js");
-  if (/\\b(feature|feature(s)?|tool|settings|profile)\\b/i.test(q)) selected.add("features.js");
-  if (/\\b(gif|klipy|tenor)\\b/i.test(q)) selected.add("gif-picker.js");
-  if (/\\b(accessibility|gif)\\b/i.test(q)) selected.add("gif-accessibility.js");
-  if (/\\b(code|source|all files|whole website|entire site|everything|repository|repo|architecture|how.*built)\\b/i.test(q)) PUBLIC_SOURCE_FILES.forEach(x => selected.add(x));
+  if (/\b(worker|backend|api|server|model|search|ai|version|deployment)\b/i.test(q)) selected.add("worker.js");
+  if (/\b(script|javascript|frontend|chat|message|memory|browser)\b/i.test(q)) selected.add("script.js");
+  if (/\b(style|css|design|theme|layout)\b/i.test(q)) selected.add("style.css");
+  if (/\b(project|workspace|action studio|status|wip|soon)\b/i.test(q)) selected.add("workspace.js");
+  if (/\b(feature|feature(s)?|tool|settings|profile)\b/i.test(q)) selected.add("features.js");
+  if (/\b(gif|klipy|tenor)\b/i.test(q)) selected.add("gif-picker.js");
+  if (/\b(accessibility|gif)\b/i.test(q)) selected.add("gif-accessibility.js");
+  if (/\b(code|source|all files|whole website|entire site|everything|repository|repo|architecture|how.*built)\b/i.test(q)) PUBLIC_SOURCE_FILES.forEach(x => selected.add(x));
   const files = [];
   for (const path of selected) {
     const content = await readPublicProjectFile(path);
-    if (content) files.push("FILE: " + path + "\\n" + content);
+    if (content) files.push("FILE: " + path + "\n" + content);
   }
   return [
     "LIVE ORIVANE PROJECT CONTEXT (retrieved from the public GitHub main branch for this request):",
@@ -41,8 +41,8 @@ async function getOrivaneProjectContext(question) {
     "Runtime model configured in Worker: " + MODEL,
     "Published semantic version: no formal semver/release tag is currently declared. Do not invent a version number; distinguish the model name, deployed Worker, and website asset cache versions.",
     "The source files below are public project code, not private credentials. You can inspect and explain them. You cannot directly change or deploy them from a normal chat reply; only claim changes when an authorized code/deployment tool actually confirms them.",
-    files.join("\\n\\n")
-  ].join("\\n");
+    files.join("\n\n")
+  ].join("\n");
 }
 
 
