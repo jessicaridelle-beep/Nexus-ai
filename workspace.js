@@ -154,6 +154,7 @@
    {id:"long-memory",name:"Long-term Memory",state:"WIP",kind:"wip",detail:"Save, review and delete personal notes locally; saved notes can be included as context in future chats on this browser."},
    {id:"code-studio",name:"Code Studio",state:"WIP",kind:"wip",detail:"Write and save code drafts locally, download them, or ask ORIVANE chat to review and explain code."},
    {id:"automation-studio",name:"Automation Studio",state:"WIP",kind:"wip",detail:"Create and track local task checklists. It does not control external apps or run background automations."},
+   {id:"operation-studio",name:"Operation Studio",state:"WIP",kind:"wip",detail:"Create named operations with objectives, priority, step checklists and progress tracking. Operations are stored locally; this release does not control external apps or devices."},
    {id:"klipy",name:"GIF Studio (KLIPY + AI GIFs)",state:"WIP",kind:"wip",detail:"Available to all members while in development. GIF search and AI GIF creation are experimental; availability also depends on the connected provider."},
    {id:"wipaccess",name:"WIP feature access",state:"WIP",kind:"wip",detail:"Future WIP features will require a verified Early Access entitlement. Existing WIP features remain available to all members."},
    {id:"visitors",name:"Live visitor counter",state:"SOON",kind:"soon",detail:"Needs shared server-side presence storage. A local counter would be misleading, so it is not presented as live."},
