@@ -47,6 +47,37 @@ async function getOrivaneProjectContext(question) {
 }
 
 
+
+const AUTH_COOKIE = "orivane_session";
+const SESSION_SECONDS = 60 * 60 * 24 * 30;
+const PASSWORD_ITERATIONS = 210000;
+const encoder = new TextEncoder();
+function toB64(bytes) { let s=""; for(const b of new Uint8Array(bytes)) s+=String.fromCharCode(b); return btoa(s).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/,""); }
+function fromB64(s) { const raw=atob(s.replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(raw,c=>c.charCodeAt(0)); }
+async function digest(value) { return toB64(await crypto.subtle.digest("SHA-256", encoder.encode(value))); }
+async function passwordHash(password, salt, iterations=PASSWORD_ITERATIONS) {
+ const key=await crypto.subtle.importKey("raw",encoder.encode(password),"PBKDF2",false,["deriveBits"]);
+ const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:fromB64(salt),iterations,hash:"SHA-256"},key,256);
+ return toB64(bits);
+}
+async function issueSession(db,userId) {
+ const bytes=crypto.getRandomValues(new Uint8Array(32)), token=toB64(bytes), tokenHash=await digest(token), now=Math.floor(Date.now()/1000);
+ await db.prepare("INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)").bind(tokenHash,userId,now+SESSION_SECONDS,now).run();
+ return token;
+}
+function cookieHeader(token,maxAge=SESSION_SECONDS) { return AUTH_COOKIE+"="+token+"; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age="+maxAge; }
+function readCookie(request,name) {
+ const raw=request.headers.get("Cookie")||"";
+ for(const part of raw.split(";")) { const i=part.indexOf("="); if(i>0&&part.slice(0,i).trim()===name) return part.slice(i+1).trim(); }
+ return "";
+}
+async function currentUser(request,db) {
+ const token=readCookie(request,AUTH_COOKIE); if(!token) return null;
+ const hash=await digest(token), now=Math.floor(Date.now()/1000);
+ const row=await db.prepare("SELECT u.id,u.username,u.role FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?").bind(hash,now).first();
+ return row||null;
+}
+
 function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin === SITE_ORIGIN ? SITE_ORIGIN : "null",
@@ -70,7 +101,63 @@ export default {
       headers: { ...headers, "Content-Type": "application/json; charset=utf-8" }
     });
 
+
     const requestedAction = new URL(request.url).searchParams.get("action");
+    const authActions = ["auth-register","auth-login","auth-me","auth-logout","auth-owner-claim"];
+    if (authActions.includes(requestedAction)) {
+      if (!env.DB) return json({error:"Authentication storage is not connected."},503);
+      if (request.method === "GET" && requestedAction !== "auth-me") return json({error:"Use POST for this action."},405);
+      if (request.method === "GET" && requestedAction === "auth-me") {
+        const user=await currentUser(request,env.DB);
+        return json({authenticated:!!user,user:user?{username:user.username,role:user.role}:null});
+      }
+      if (request.method !== "POST") return json({error:"Use POST for this action."},405);
+      let input={}; try { input=await request.json(); } catch { return json({error:"Enter valid JSON."},400); }
+      const username=String(input.username||"").trim().normalize("NFKC");
+      const password=String(input.password||"");
+      if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) return json({error:"Username must be 3–24 characters using letters, numbers or underscores."},400);
+      if (password.length<10 || password.length>128) return json({error:"Password must be between 10 and 128 characters."},400);
+      const ip=request.headers.get("CF-Connecting-IP")||"unknown";
+      const attemptKey=await digest(ip+"|"+username.toLowerCase());
+      const now=Math.floor(Date.now()/1000);
+      const attempt=await env.DB.prepare("SELECT count,window_start FROM auth_attempts WHERE attempt_key=?").bind(attemptKey).first();
+      if (attempt && attempt.window_start>now-900 && attempt.count>=8) return json({error:"Too many attempts. Wait 15 minutes and try again."},429);
+      await env.DB.prepare("INSERT INTO auth_attempts(attempt_key,count,window_start) VALUES(?,1,?) ON CONFLICT(attempt_key) DO UPDATE SET count=CASE WHEN window_start<? THEN 1 ELSE count+1 END,window_start=CASE WHEN window_start<? THEN excluded.window_start ELSE window_start END").bind(attemptKey,now,now-900,now-900).run();
+      if (requestedAction==="auth-register" || requestedAction==="auth-owner-claim") {
+        const isOwner=requestedAction==="auth-owner-claim";
+        if (isOwner) {
+          if (!env.JR_SETUP_CODE || input.setupCode!==env.JR_SETUP_CODE) return json({error:"Owner setup code is invalid."},403);
+          const claimed=await env.DB.prepare("SELECT value FROM auth_meta WHERE key='jr_claimed'").first();
+          if (claimed) return json({error:"The JR account has already been claimed."},409);
+          if (username.toLowerCase()!=="jr") return json({error:"The protected owner username must be JR."},400);
+        } else if (username.toLowerCase()==="jr") return json({error:"JR is reserved for the protected owner account."},403);
+        const existing=await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
+        if (existing) return json({error:"That username is already taken."},409);
+        const salt=toB64(crypto.getRandomValues(new Uint8Array(16)));
+        const hash=await passwordHash(password,salt);
+        const id=crypto.randomUUID();
+        try {
+          await env.DB.prepare("INSERT INTO users(id,username,password_hash,password_salt,password_iterations,role) VALUES(?,?,?,?,?,?)").bind(id,username,hash,salt,PASSWORD_ITERATIONS,isOwner?"owner":"user").run();
+          if (isOwner) await env.DB.prepare("INSERT INTO auth_meta(key,value) VALUES('jr_claimed','1')").run();
+        } catch { return json({error:"Could not create this account. Try another username."},409); }
+        const token=await issueSession(env.DB,id);
+        return new Response(JSON.stringify({ok:true,user:{username,role:isOwner?"owner":"user"}}),{status:201,headers:{...headers,"Content-Type":"application/json; charset=utf-8","Set-Cookie":cookieHeader(token)}});
+      }
+      if (requestedAction==="auth-login") {
+        const row=await env.DB.prepare("SELECT id,username,password_hash,password_salt,password_iterations,role FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
+        const candidate=row&&row.password_salt?await passwordHash(password,row.password_salt,row.password_iterations||PASSWORD_ITERATIONS):"";
+        if (!row || !row.password_hash || candidate!==row.password_hash) return json({error:"Username or password is incorrect."},401);
+        await env.DB.prepare("DELETE FROM auth_attempts WHERE attempt_key=?").bind(attemptKey).run();
+        const token=await issueSession(env.DB,row.id);
+        return new Response(JSON.stringify({ok:true,user:{username:row.username,role:row.role}}),{headers:{...headers,"Content-Type":"application/json; charset=utf-8","Set-Cookie":cookieHeader(token)}});
+      }
+      if (requestedAction==="auth-logout") {
+        const token=readCookie(request,AUTH_COOKIE);
+        if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await digest(token)).run();
+        return new Response(JSON.stringify({ok:true}),{headers:{...headers,"Content-Type":"application/json; charset=utf-8","Set-Cookie":cookieHeader("",0)}});
+      }
+    }
+
     const publicSiteInfoRead = request.method === "GET" && requestedAction === "site-info" && !origin;
     if (origin !== SITE_ORIGIN && !publicSiteInfoRead) return json({ error: "This website is not allowed to use this endpoint." }, 403);
     if (request.method === "GET") {
@@ -94,7 +181,7 @@ export default {
           tenor: !!env.TENOR_API_KEY,
           gifGeneration: false,
           visitorCounter: false,
-          secureAuth: false
+          secureAuth: !!env.DB
         },
         checkedAt: new Date().toISOString()
       });
