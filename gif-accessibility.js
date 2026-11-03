@@ -52,6 +52,5 @@
  }
  $("previewGif")?.addEventListener("click",showPreview);
  urlInput?.addEventListener("input",()=>{send.disabled=true;});
- $("sendGif")?.addEventListener("click",()=>{const raw=urlInput.value.trim();if(!gifInfo(raw))return;panel.hidden=true;window.sendMessage("GIF: "+raw);urlInput.value="";preview.hidden=true;send.disabled=true;});
  document.querySelectorAll("button").forEach(b=>{if(!b.getAttribute("aria-label")&&!b.textContent.trim())b.setAttribute("aria-label","Button");});
 })();
