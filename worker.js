@@ -102,6 +102,25 @@ async function currentUser(request,db) {
  return row||null;
 }
 
+
+async function verifyStripeSignature(rawBody, signatureHeader, secret) {
+  if (!signatureHeader || !secret) return false;
+  const parts = signatureHeader.split(",").map(x => x.trim());
+  const timestamp = parts.find(x => x.startsWith("t="))?.slice(2);
+  const signatures = parts.filter(x => x.startsWith("v1=")).map(x => x.slice(3));
+  if (!timestamp || !/^\\d+$/.test(timestamp) || !signatures.length) return false;
+  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (age > 300) return false;
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+  const payload = encoder.encode(timestamp + "." + rawBody);
+  for (const signature of signatures) {
+    if (!/^[a-f0-9]{64}$/i.test(signature)) continue;
+    const bytes = Uint8Array.from(signature.match(/../g), x => parseInt(x, 16));
+    if (await crypto.subtle.verify("HMAC", key, bytes, payload)) return true;
+  }
+  return false;
+}
+
 function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin === SITE_ORIGIN ? SITE_ORIGIN : "null",
@@ -129,6 +148,83 @@ export default {
 
 
     const requestedAction = new URL(request.url).searchParams.get("action");
+
+    if (requestedAction === "early-access-checkout") {
+      if (request.method !== "POST") return json({ error: "Use POST to start checkout." }, 405);
+      if (origin !== SITE_ORIGIN) return json({ error: "This website is not allowed to start checkout." }, 403);
+      if (!env.DB) return json({ error: "Account storage is unavailable." }, 503);
+      if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET) return json({ error: "Secure Stripe checkout is not fully configured yet." }, 503);
+      const user = await currentUser(request, env.DB);
+      if (!user) return json({ error: "Sign in before purchasing Early Access." }, 401);
+      const existing = await env.DB.prepare("SELECT id FROM user_entitlements WHERE user_id=? AND entitlement=? AND status=? LIMIT 1").bind(user.id, "early_access", "active").first();
+      if (existing) return json({ error: "Early Access is already active on this account." }, 409);
+      try {
+        const form = new URLSearchParams();
+        form.set("mode", "payment");
+        form.set("success_url", PROJECT_SITE + "?early_access=success&session_id={CHECKOUT_SESSION_ID}");
+        form.set("cancel_url", PROJECT_SITE + "?early_access=cancelled");
+        form.set("client_reference_id", user.id);
+        form.set("metadata[user_id]", user.id);
+        form.set("metadata[entitlement]", "early_access");
+        form.set("line_items[0][quantity]", "1");
+        form.set("line_items[0][price_data][currency]", "eur");
+        form.set("line_items[0][price_data][unit_amount]", "99");
+        form.set("line_items[0][price_data][product_data][name]", "ORIVANE Early Access Pass");
+        form.set("line_items[0][price_data][product_data][description]", "One-time access to experimental WIP features before public release. Not permanent exclusivity.");
+        const stripeResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + env.STRIPE_SECRET_KEY,
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Idempotency-Key": crypto.randomUUID()
+          },
+          body: form.toString()
+        });
+        const session = await stripeResponse.json();
+        if (!stripeResponse.ok || !session.url) {
+          console.error("Stripe Checkout session creation failed:", session.error?.message || stripeResponse.status);
+          return json({ error: "Stripe couldn't start checkout. Please try again later." }, 502);
+        }
+        return json({ checkoutUrl: session.url });
+      } catch (error) {
+        console.error("Stripe Checkout request failed:", error && error.message ? error.message : error);
+        return json({ error: "Couldn't connect to secure checkout. Try again later." }, 502);
+      }
+    }
+
+    if (requestedAction === "early-access-webhook") {
+      if (request.method !== "POST") return json({ error: "Use POST for Stripe webhooks." }, 405);
+      if (!env.DB || !env.STRIPE_WEBHOOK_SECRET) return json({ error: "Webhook processing is not configured." }, 503);
+      const rawBody = await request.text();
+      const signature = request.headers.get("Stripe-Signature") || "";
+      let verified = false;
+      try { verified = await verifyStripeSignature(rawBody, signature, env.STRIPE_WEBHOOK_SECRET); } catch {}
+      if (!verified) return json({ error: "Invalid Stripe webhook signature." }, 400);
+      let event;
+      try { event = JSON.parse(rawBody); } catch { return json({ error: "Invalid webhook payload." }, 400); }
+      if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
+        const session = event.data?.object;
+        const userId = session?.metadata?.user_id;
+        const validPurchase = session &&
+          session.mode === "payment" &&
+          session.payment_status === "paid" &&
+          session.currency === "eur" &&
+          session.amount_total === 99 &&
+          session.metadata?.entitlement === "early_access" &&
+          typeof userId === "string" &&
+          session.client_reference_id === userId;
+        if (validPurchase) {
+          const user = await env.DB.prepare("SELECT id FROM users WHERE id=? LIMIT 1").bind(userId).first();
+          if (user) {
+            await env.DB.prepare("INSERT OR IGNORE INTO user_entitlements (id,user_id,entitlement,status,provider,provider_reference) VALUES(?,?,?,?,?,?)")
+              .bind(crypto.randomUUID(), userId, "early_access", "active", "stripe", session.id)
+              .run();
+          }
+        }
+      }
+      return json({ received: true });
+    }
+
     const authActions = ["auth-register","auth-login","auth-me","auth-logout","auth-owner-claim","early-access-status"];
     if (authActions.includes(requestedAction)) {
       if (!env.DB) return json({error:"Authentication storage is not connected."},503);
@@ -139,7 +235,7 @@ export default {
       }
       if (request.method === "GET" && requestedAction === "early-access-status") {
         const user=await currentUser(request,env.DB);
-        if (!user) return json({authenticated:false,earlyAccess:false,checkoutReady:false});
+        if (!user) return json({authenticated:false,earlyAccess:false,checkoutReady:!!(env.STRIPE_SECRET_KEY&&env.STRIPE_WEBHOOK_SECRET)});
         let earlyAccess=false;
         try {
           const entitlement=await env.DB.prepare("SELECT id FROM user_entitlements WHERE user_id=? AND entitlement=? AND status=? LIMIT 1").bind(user.id,"early_access","active").first();
@@ -147,7 +243,7 @@ export default {
         } catch (error) {
           console.error("Early Access entitlement lookup failed:",error&&error.message?error.message:error);
         }
-        return json({authenticated:true,username:user.username,earlyAccess,checkoutReady:false});
+        return json({authenticated:true,username:user.username,earlyAccess,checkoutReady:!!(env.STRIPE_SECRET_KEY&&env.STRIPE_WEBHOOK_SECRET)});
       }
       if (request.method !== "POST") return json({error:"Use POST for this action."},405);
       if (requestedAction === "auth-logout") {
