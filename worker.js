@@ -74,6 +74,44 @@ export default {
     if (request.method !== "POST") return json({ error: "Use POST to send a chat message." }, 405);
 
     const requestUrl = new URL(request.url);
+
+    const action = requestUrl.searchParams.get("action");
+    if (action === "plan-task" || action === "run-step") {
+      let payload;
+      try { payload = await request.json(); } catch { return json({ error: "The task request must be valid JSON." }, 400); }
+      const task = typeof payload.task === "string" ? payload.task.trim() : "";
+      if (!task || task.length > 4000) return json({ error: "Enter a task between 1 and 4,000 characters." }, 400);
+      if (!env.AI || typeof env.AI.run !== "function") return json({ error: "The AI task service is unavailable." }, 503);
+      try {
+        if (action === "plan-task") {
+          const planned = await env.AI.run(MODEL, { messages: [
+            { role: "system", content: "You are the task planner for ORIVANE Action Studio. Convert the user's goal into 2 to 6 small, ordered, executable steps. Return ONLY valid JSON in this exact shape: {\"steps\":[{\"title\":\"short title\",\"instruction\":\"specific instruction\"}]}. For simple tasks use 2 or 3 steps. Never plan to access accounts, spend money, publish, delete, send messages, or perform consequential external actions. Plan drafts and analysis only. No markdown fences." },
+            { role: "user", content: task }
+          ], max_tokens: 900, temperature: 0.2 });
+          const raw = planned && typeof planned.response === "string" ? planned.response.trim() : "";
+          const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+          let parsed;
+          try { parsed = JSON.parse(cleaned); } catch { throw new Error("The planner returned an invalid task plan. Please retry."); }
+          if (!Array.isArray(parsed.steps) || parsed.steps.length < 1) throw new Error("The planner did not create any steps. Please retry.");
+          const steps = parsed.steps.slice(0, 6).map((step, index) => ({ id:index+1,title:String(step.title||("Step "+(index+1))).slice(0,90),instruction:String(step.instruction||"").slice(0,700),status:"pending" })).filter(step=>step.instruction);
+          if (!steps.length) throw new Error("The task plan was empty. Please retry.");
+          return json({ steps });
+        }
+        const step = payload.step && typeof payload.step === "object" ? payload.step : {};
+        const instruction = typeof step.instruction === "string" ? step.instruction.trim() : "";
+        if (!instruction || instruction.length > 1000) return json({ error: "The task step is missing or too long." }, 400);
+        const previous = Array.isArray(payload.previousResults) ? payload.previousResults.slice(-5).map(item=>({title:String(item.title||"").slice(0,90),result:String(item.result||"").slice(0,5000)})) : [];
+        const context = previous.map((item,i)=>"Completed step "+(i+1)+": "+item.title+"\n"+item.result).join("\n\n");
+        const completed = await env.AI.run(MODEL, { messages: [
+          { role:"system", content:"You are ORIVANE Action Studio's execution engine. Complete exactly the current step and return a useful concrete result. Use prior step results as context. Do not claim to edit files, browse, deploy, access accounts, or perform external actions. If the step requests a consequential action, prepare a safe draft or explain why approval/integration is required." },
+          { role:"user", content:"Overall task:\n"+task+"\n\nCurrent step:\n"+instruction+"\n\nPrior completed work:\n"+(context||"None yet.") }
+        ], max_tokens:1500, temperature:0.35 });
+        const result = completed && typeof completed.response === "string" ? completed.response.trim() : "";
+        if (!result) throw new Error("The AI returned an empty result for this step.");
+        return json({ result });
+      } catch(error) { return json({ error:error&&error.message?error.message:"The task step failed." },502); }
+    }
+
     if (requestUrl.searchParams.get("action") === "run-task") {
       let taskBody;
       try { taskBody = await request.json(); }
