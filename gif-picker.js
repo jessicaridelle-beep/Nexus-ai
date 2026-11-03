@@ -85,7 +85,7 @@
  function render(items){
   grid.replaceChildren();
   if(!items.length){status.textContent="No GIFs found. Try another search.";return;}
-  status.textContent="Tap a GIF to send it into chat · Powered by KLIPY";
+  status.textContent="Tap a GIF to send it into chat · Powered by ORIVANE GIF search";
   items.forEach(item=>{
    const url=mediaUrl(item),preview=previewUrl(item);
    if(!url||!preview)return;
@@ -108,12 +108,17 @@
   status.textContent=term?"Searching KLIPY…":"Loading trending GIFs…";
   try{
    const endpoint=API+(term?"&q="+encodeURIComponent(term):"");
-   const response=await fetch(endpoint,{headers:{Accept:"application/json"}});
-   let data;try{data=await response.json()}catch{throw new Error("KLIPY returned an unreadable response.");}
+   let response=await fetch(endpoint,{headers:{Accept:"application/json"}});
+   let data;try{data=await response.json()}catch{throw new Error("The GIF provider returned an unreadable response.");}
    if(thisRequest!==requestNo)return;
-   if(!response.ok)throw new Error(data?.message||data?.error||("KLIPY request failed ("+response.status+"). Check the app key and its access."));
+   if(!response.ok){
+    const primaryError=data?.message||data?.error||("KLIPY request failed ("+response.status+").");
+    response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=gif-search"+(term?"&q="+encodeURIComponent(term):""),{headers:{Accept:"application/json"}});
+    try{data=await response.json()}catch{throw new Error("Neither GIF provider returned readable data.");}
+    if(!response.ok)throw new Error(primaryError+" Tenor fallback: "+(data?.error||"not configured.")+" The GIF search provider keys need to be configured.");
+   }
    const items=findItems(data);
-   if(!items.length&&data?.error)throw new Error(typeof data.error==="string"?data.error:"KLIPY returned an API error.");
+   if(!items.length&&data?.error)throw new Error(typeof data.error==="string"?data.error:"GIF provider returned an API error.");
    render(items);
   }catch(error){if(thisRequest===requestNo)status.textContent=(error.message||"Couldn't load GIFs.")+" Your chat still works; the site owner needs to configure the KLIPY key on the Worker.";}
  }
