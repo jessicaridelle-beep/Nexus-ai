@@ -372,7 +372,6 @@ export default {
       }
     }
 
-    if (!(await allowRateLimit(env, request, "chat", 24, 300))) return json({error:"ORIVANE chat is temporarily rate-limited. Please try again in five minutes."},429);
     try {
       const body = await request.json();
       if (new URL(request.url).searchParams.get("action") === "create-gif") {
