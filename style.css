@@ -236,3 +236,42 @@ body.light .topbar{background:rgba(247,248,251,.94)}
 .gif-attribution{line-height:1.5}
 @media(max-width:760px){.tool-dock{padding:15px}.tool-dock-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tool-dock-footer{align-items:flex-start;flex-direction:column}.tool-dock-note{text-align:left}}
 @media(max-width:480px){.tool-dock{margin:4px 0 16px;padding:12px;border-radius:15px}.tool-dock-heading h2{font-size:17px}.tool-dock-grid{grid-template-columns:1fr;gap:7px}.tool-card{min-height:68px}.gif-key-form{grid-template-columns:1fr 1fr}.gif-key-form input{grid-column:1/-1}.gif-key-form .gif-key-label{grid-column:1/-1}.gif-key-form a{grid-column:1/-1}}
+
+/* Professional overflow and responsive text pass */
+.chat-shell,.chat-form,.composer-bottom,.composer-tools,.tool-dock,.tool-card,.tool-card>span,.chat-note{min-width:0;max-width:100%}
+.chat-note{display:block;width:min(100%,680px);margin:9px auto 0;padding:10px 14px;border:1px solid var(--line);border-radius:11px;background:var(--panel2);color:var(--muted);font-size:11px;line-height:1.55;text-align:center;white-space:normal;overflow-wrap:anywhere;word-break:normal;hyphens:auto}
+.composer-bottom{flex-wrap:wrap;align-items:center;gap:8px}
+.composer-bottom>span{flex:1 1 150px;max-width:none;min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.45}
+.composer-tools{display:flex;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:7px;min-width:0}
+.composer-tools .tool-button,.composer-tools button[type="submit"]{flex:0 0 auto;min-width:42px;max-width:100%;white-space:nowrap}
+.composer-tools .memory-button{width:auto!important;min-width:94px!important;height:38px!important;padding:0 10px!important;border-radius:10px;font-size:11px!important;letter-spacing:0!important;font-weight:700!important}
+.memory-button::before{content:"◉";margin-right:6px;font-size:11px}
+.memory-button.memory-on{background:#ff8a3219!important}
+.tool-card,.tool-card *,.tool-dock-heading,.tool-dock-footer,.tool-quick-actions{min-width:0}
+.tool-card b,.tool-card small,.tool-dock-heading p,.tool-dock-note,.tool-quick-actions button{overflow-wrap:anywhere;white-space:normal;word-break:normal;line-height:1.5}
+.tool-card small{display:block}
+.tool-dock-footer{flex-wrap:wrap}
+.tool-quick-actions{max-width:100%}
+.tool-quick-actions button{max-width:100%}
+.command-grid button,.gif-key-form input,.gif-key-form button,.workspace-modal,.project-field,.project-task{min-width:0;max-width:100%;overflow-wrap:anywhere}
+@media(max-width:560px){
+ .chat-shell{padding-left:14px;padding-right:14px}
+ .chat-note{font-size:10px;padding:9px 11px;text-align:left}
+ .composer-bottom{align-items:stretch}
+ .composer-bottom>span{flex-basis:100%;max-width:none}
+ .composer-tools{width:100%;justify-content:space-between;gap:6px}
+ .composer-tools .tool-button,.composer-tools button[type="submit"]{min-height:40px}
+ .composer-tools .memory-button{min-width:104px!important}
+ .tool-dock-heading{align-items:flex-start}
+ .tool-dock-heading p{max-width:100%}
+ .tool-dock-footer{gap:9px}
+ .tool-quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .tool-quick-actions button{width:100%;min-height:38px;text-align:center}
+}
+@media(max-width:360px){
+ .composer-tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+ .composer-tools .tool-button,.composer-tools button[type="submit"]{width:100%;min-width:0;padding:0 5px}
+ .composer-tools .memory-button{min-width:0!important;font-size:10px!important}
+ .memory-button::before{margin-right:3px}
+ .tool-dock-grid{grid-template-columns:1fr}
+}
