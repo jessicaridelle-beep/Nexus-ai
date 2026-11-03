@@ -70,3 +70,20 @@
 .danger-button{justify-self:start;border:1px solid #e36b6b66;background:#e36b6b12;color:#e88a8a;border-radius:8px;padding:9px 11px;font-size:10px}
 .memory-button{font-size:7px!important;letter-spacing:.2px!important;padding:0 5px!important;min-width:30px!important;height:27px!important}
 @media(max-width:800px){.topbar{gap:8px}.top-right{gap:5px}.header-action{padding:7px 8px;font-size:9px}.model-pill{display:none}.dialog{padding:22px}}
+
+/* ORIVANE GIF Studio */
+.gif-panel-head>div{display:grid;gap:3px}.gif-panel-head small{font-size:9px;color:var(--muted);font-weight:400}
+.gif-shortcuts{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.gif-shortcuts button{border:1px solid var(--line);border-radius:20px;background:transparent;color:var(--muted);padding:6px 9px;font-size:10px}
+.gif-shortcuts button:hover{border-color:var(--accent);color:var(--accent)}
+.gif-url-label{display:block;color:var(--muted);font-size:10px;margin:12px 0 6px}
+.gif-url-row{display:flex;gap:7px}.gif-url-row input{min-width:0;flex:1;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);padding:10px;font:11px 'DM Sans'}
+.gif-url-row button,.gif-panel-actions button{border:1px solid var(--line);border-radius:9px;padding:8px 11px;background:transparent;color:var(--text);font-size:10px;font-weight:700}
+.gif-preview{margin-top:10px;min-height:70px;padding:8px;border:1px dashed var(--line);border-radius:10px;text-align:center}
+.gif-preview img{max-width:100%;max-height:190px;border-radius:7px;object-fit:contain}
+.gif-preview span{display:block;color:var(--muted);font-size:10px;padding:10px}
+.gif-panel-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:10px}
+.gif-panel-actions .gif-send{background:linear-gradient(130deg,var(--accent),var(--accent2));color:#17120e;border:0}
+.gif-panel-actions button:disabled{opacity:.4;cursor:not-allowed}
+.user-message .chat-gif{display:block;max-width:min(300px,100%);max-height:230px;border-radius:9px;margin-top:8px}
+.gif-share{margin-right:auto}
