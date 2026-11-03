@@ -432,3 +432,12 @@ body.studio-open,body.workspace-open,body.action-open{overflow:hidden}
 .studio-scroll-arrow{width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:var(--panel);color:var(--text);font-size:23px;font-weight:800;box-shadow:0 4px 18px #0005;cursor:pointer}
 .studio-scroll-arrow:disabled{opacity:.25;cursor:default}
 .studio-dashboard-body{padding-bottom:76px}
+
+/* Sidebar scroll controls: visible when the navigation exceeds the screen */
+.sidebar{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:none;padding-bottom:120px}
+.sidebar::-webkit-scrollbar{display:none}
+.sidebar-scroll-controls{position:fixed;left:190px;bottom:82px;z-index:30;display:flex;flex-direction:column;gap:7px;padding:6px;border:1px solid #ff8a324d;border-radius:22px;background:#10141eeF;box-shadow:0 5px 22px #0007}
+.sidebar-scroll-controls[hidden]{display:none!important}
+.sidebar-scroll-arrow{width:34px;height:34px;border:1px solid #ff9a4566;border-radius:50%;background:linear-gradient(135deg,#ff8a32,#ffc16e);color:#17120e;font-size:20px;font-weight:800;line-height:1}
+.sidebar-scroll-arrow:disabled{opacity:.28;cursor:default}
+@media(max-width:800px){.sidebar-scroll-controls{left:205px;bottom:82px}}
