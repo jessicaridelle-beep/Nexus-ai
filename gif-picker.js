@@ -36,7 +36,8 @@
    img.onerror=()=>{card.remove();if(!grid.children.length)status.textContent="GIF previews failed to load. Check your connection or try another search.";};
    const label=document.createElement("span");label.textContent="＋ Send";
    card.append(img,label);
-   card.addEventListener("click",()=>{\n    if(item?.slug){fetch("https://api.klipy.com/api/v1/"+encodeURIComponent(key)+"/gifs/share/"+encodeURIComponent(item.slug),{method:"POST"}).catch(()=>{});}
+   card.addEventListener("click",()=>{
+    if(item?.slug){fetch("https://api.klipy.com/api/v1/"+encodeURIComponent(key)+"/gifs/share/"+encodeURIComponent(item.slug),{method:"POST"}).catch(()=>{});}
     if(typeof window.sendMessage!=="function"){status.textContent="Chat is not ready yet.";return;}
     show(false);window.sendMessage(url);
    });
