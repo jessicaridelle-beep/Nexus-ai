@@ -396,3 +396,32 @@ body.light .topbar{background:rgba(247,248,251,.94)}
 .voice-mode-actions button:disabled{opacity:.4}
 .voice-mode-hint{max-width:480px;text-align:center;line-height:1.6}
 @media(max-width:600px){.voice-mode{padding:18px}.voice-orb{width:125px;height:125px}}
+
+
+/* Scroll-safe overlays: keep every dashboard and workspace control reachable */
+.studio-overlay,.workspace-overlay,.action-overlay,.status-overlay,.plugin-overlay{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ overflow-y:auto;
+ overflow-x:hidden;
+ overscroll-behavior-y:contain;
+ -webkit-overflow-scrolling:touch;
+}
+.studio-modal,.workspace-modal,.action-modal,.status-modal,.plugin-modal{
+ flex:0 0 auto;
+ max-height:calc(100vh - 36px);
+ max-height:calc(100dvh - 36px);
+ overflow-x:hidden;
+ overflow-y:auto;
+ overscroll-behavior:contain;
+ -webkit-overflow-scrolling:touch;
+ margin:auto;
+}
+.studio-body,.workspace-modal,.action-modal,.status-modal,.plugin-modal{min-height:0}
+body.studio-open,body.workspace-open,body.action-open{overflow:hidden}
+@media(max-width:600px){
+ .studio-overlay,.workspace-overlay,.action-overlay,.status-overlay,.plugin-overlay{align-items:flex-start;padding:8px}
+ .studio-modal,.workspace-modal,.action-modal,.status-modal,.plugin-modal{width:100%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);margin:0 auto}
+ .studio-body{padding-bottom:max(22px,env(safe-area-inset-bottom))}
+}
