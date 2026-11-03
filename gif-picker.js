@@ -4,7 +4,7 @@
  const panel=$("gifPanel"),button=$("gifButton"),form=$("gifForm"),query=$("gifQuery"),grid=$("gifResults"),status=$("gifStatus");
  if(!panel||!button||!form||!grid)return;
  button.setAttribute("aria-controls","gifPanel");button.setAttribute("aria-expanded","false");
- function show(open){panel.hidden=!open;button.setAttribute("aria-expanded",String(open));if(open){query.focus();load("trending");}}
+ function show(open){panel.hidden=!open;button.setAttribute("aria-expanded",String(open));if(open){query.focus();load("");}}
  button.addEventListener("click",()=>show(panel.hidden));
  $("closeGif").addEventListener("click",()=>show(false));
  function render(items){
