@@ -75,6 +75,10 @@ export default {
 
     try {
       const body = await request.json();
+      if (new URL(request.url).searchParams.get("action") === "create-gif") {
+        if (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 500) return json({ error: "Enter a GIF prompt of 1–500 characters." }, 400);
+        return json({ error: "No GIF-generation provider is connected to this Worker yet. The ChatGPT GifGen tool is available inside ChatGPT, but it does not expose a website API. Connect a provider API to enable generation." }, 503);
+      }
       if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 12) {
         return json({ error: "Send between 1 and 12 messages." }, 400);
       }
