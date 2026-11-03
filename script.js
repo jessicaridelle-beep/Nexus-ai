@@ -24,10 +24,6 @@ if(localStorage.getItem("orivane-theme")==="light")document.body.classList.add("
 document.querySelectorAll(".side-link").forEach(button=>button.addEventListener("click",()=>{if(button.dataset.view!=="chat"){chatNote.textContent=button.dataset.view==="projects"?"Projects are planned for a future update.":"Saved ideas are planned for a future update.";setTimeout(()=>{if(chatNote.textContent.includes("planned for a future update"))chatNote.textContent="Orivane can make mistakes. Check important information.";},3500);}else document.getElementById("currentPage").textContent="Chat";document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b===button));sidebar.classList.remove("open");}));
 document.getElementById("memoryButton").addEventListener("click",()=>{memoryEnabled=!memoryEnabled;localStorage.setItem(MEMORY_FLAG,String(memoryEnabled));if(memoryEnabled){saveMemory();chatNote.textContent="Memory on: this device will remember up to 30 recent messages.";}else{localStorage.removeItem(MEMORY_KEY);chatNote.textContent="Memory off: saved conversation data was cleared from this device.";}renderMemoryButton();});
 document.getElementById("emojiButton").addEventListener("click",()=>{const emoji=emojiChoices[Math.floor(Math.random()*emojiChoices.length)];const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;input.value=input.value.slice(0,start)+emoji+input.value.slice(end);input.focus();input.setSelectionRange(start+emoji.length,start+emoji.length);input.dispatchEvent(new Event("input"));});
-const gifPanel=document.getElementById("gifPanel");
-document.getElementById("gifButton").addEventListener("click",()=>{gifPanel.hidden=!gifPanel.hidden;if(!gifPanel.hidden){document.getElementById("gifQuery").value=input.value.trim();document.getElementById("gifQuery").focus();}});
-document.getElementById("closeGif").addEventListener("click",()=>gifPanel.hidden=true);
-document.getElementById("gifForm").addEventListener("submit",e=>{e.preventDefault();const q=document.getElementById("gifQuery").value.trim()||"funny reaction";window.open("https://tenor.com/search/"+encodeURIComponent(q)+"-gifs","_blank","noopener,noreferrer");chatNote.textContent="Tenor opened in a new tab. Copy a GIF's share link and paste it into chat.";});
 renderMemoryButton();restoreMemory();
 
 /* Profile and personalisation settings */
@@ -52,59 +48,3 @@ document.getElementById("saveSettings").addEventListener("click",()=>{const p={n
 document.getElementById("clearMemory").addEventListener("click",()=>{localStorage.removeItem(MEMORY_KEY);conversation.length=0;content.replaceChildren();document.getElementById("settingsStatus").textContent="Saved chat memory cleared.";});
 const savedProfile=localStorage.getItem(PROFILE_KEY);if(savedProfile)document.getElementById("profileOpen").textContent=savedProfile;
 
-/* GIF Studio: provider search + preview/send flow */
-const gifUrlInput=document.getElementById("gifUrl"),gifPreview=document.getElementById("gifPreview"),sendGifButton=document.getElementById("sendGif");
-function validGifUrl(value){try{const u=new URL(value),h=u.hostname.toLowerCase();return u.protocol==="https:"&&(h==="tenor.com"||h.endsWith(".tenor.com")||h==="giphy.com"||h.endsWith(".giphy.com"));}catch{return false;}}
-function previewSelectedGif(){const url=gifUrlInput.value.trim();gifPreview.replaceChildren();gifPreview.hidden=false;if(!validGifUrl(url)){gifPreview.textContent="Paste a valid HTTPS Tenor or Giphy link.";sendGifButton.disabled=true;return;}const direct=getGifUrlFromText(url);if(direct){const img=document.createElement("img");img.src=direct;img.alt="GIF preview";img.onerror=()=>{gifPreview.textContent="This link does not expose a direct GIF file. You can still send its link.";};gifPreview.appendChild(img);}else{const note=document.createElement("span");note.textContent="This is a share-page link, not a direct image file. It will be sent as a clickable link; use a direct media GIF URL to show animation inline.";gifPreview.appendChild(note);appendLink(gifPreview,url,"Open GIF source ↗");}sendGifButton.disabled=false;}
-document.getElementById("previewGif").addEventListener("click",previewSelectedGif);
-gifUrlInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();previewSelectedGif();}});
-sendGifButton.addEventListener("click",()=>{const url=gifUrlInput.value.trim();if(!validGifUrl(url))return;gifPanel.hidden=true;sendMessage("GIF: "+url);gifUrlInput.value="";gifPreview.hidden=true;sendGifButton.disabled=true;});
-document.getElementById("shareGif").addEventListener("click",async()=>{const url=gifUrlInput.value.trim();if(!validGifUrl(url))return;try{if(navigator.share)await navigator.share({title:"ORIVANE GIF",url});else{await navigator.clipboard.writeText(url);chatNote.textContent="GIF link copied — share it anywhere.";}}catch{}});
-document.querySelectorAll("[data-gif-search]").forEach(b=>b.addEventListener("click",()=>{document.getElementById("gifQuery").value=b.dataset.gifSearch;window.open("https://tenor.com/search/"+encodeURIComponent(b.dataset.gifSearch)+"-gifs","_blank","noopener,noreferrer");}));
-
-
-// GIF share-link rendering fix: Tenor/Giphy share pages need their official embed player,
-// not an <img> tag. Direct media URLs continue to use an animated image.
-function getGifEmbedUrl(value){
-  try {
-    const u=new URL(value), host=u.hostname.toLowerCase(), parts=u.pathname.split("/").filter(Boolean);
-    if(u.protocol!=="https:") return null;
-    if(host==="tenor.com"||host.endsWith(".tenor.com")){
-      const id=parts.slice().reverse().find(x=>/^\d+$/.test(x));
-      if(id) return "https://tenor.com/embed/"+id;
-    }
-    if(host==="giphy.com"||host.endsWith(".giphy.com")){
-      const id=parts.slice().reverse().find(x=>/^[A-Za-z0-9]+$/.test(x) && x.length>=6);
-      if(id) return "https://giphy.com/embed/"+id;
-    }
-  } catch {}
-  return null;
-}
-function renderMessageText(container,text){
-  const urls=(String(text).match(/https?:\/\/[^\s<>"']+/g)||[]).map(x=>x.replace(/[),.!?]+$/,""));
-  const direct=urls.map(x=>getGifUrlFromText(x)).find(Boolean);
-  const share=urls.find(x=>getGifEmbedUrl(x));
-  const url=direct||share;
-  if(!url){container.textContent=text;return;}
-  const clean=String(text).replace(url,"").trim();
-  if(clean) container.append(document.createTextNode(clean+" "));
-  if(direct){
-    const img=document.createElement("img");img.className="chat-gif";img.src=direct;img.alt="Animated GIF";img.loading="lazy";
-    img.onerror=()=>{img.remove();appendLink(container,url,"Open GIF ↗");};container.appendChild(img);
-  } else {
-    const frame=document.createElement("iframe");frame.className="chat-gif-frame";frame.src=getGifEmbedUrl(share);
-    frame.title="Animated GIF";frame.loading="lazy";frame.allow="autoplay; fullscreen";
-    frame.setAttribute("referrerpolicy","strict-origin-when-cross-origin");
-    frame.style.width="min(100%,420px)";frame.style.aspectRatio="16 / 9";frame.style.border="0";frame.style.borderRadius="12px";
-    container.appendChild(frame);
-  }
-}
-function previewSelectedGif(){
-  const url=gifUrlInput.value.trim();gifPreview.replaceChildren();gifPreview.hidden=false;
-  if(!validGifUrl(url)){gifPreview.textContent="Paste a valid HTTPS Tenor or Giphy link.";sendGifButton.disabled=true;return;}
-  const direct=getGifUrlFromText(url),embed=getGifEmbedUrl(url);
-  if(direct){const img=document.createElement("img");img.src=direct;img.alt="GIF preview";img.onerror=()=>{gifPreview.textContent="Couldn't load that media file. Try another GIF link.";};gifPreview.appendChild(img);}
-  else if(embed){const frame=document.createElement("iframe");frame.src=embed;frame.title="GIF preview";frame.allow="autoplay; fullscreen";frame.style.width="100%";frame.style.aspectRatio="16 / 9";frame.style.border="0";frame.style.borderRadius="10px";gifPreview.appendChild(frame);}
-  else {gifPreview.textContent="I couldn't recognise the GIF ID in this share link. Try copying the GIF's page URL again.";}
-  sendGifButton.disabled=!direct&&!embed;
-}
