@@ -1,0 +1,93 @@
+/* ORIVANE motion layer — additive styles only */
+@media (prefers-reduced-motion: no-preference) {
+  .orivane-motion-ready .welcome {
+    animation: orivane-enter 720ms cubic-bezier(.2,.75,.25,1) both;
+  }
+  .orivane-motion-ready .orb-ring {
+    animation: orivane-orbit 18s linear infinite;
+    transform-origin: center;
+  }
+  .orivane-motion-ready .ring-two {
+    animation-direction: reverse;
+    animation-duration: 24s;
+  }
+  .orivane-motion-ready .orb-core {
+    animation: orivane-float 5s ease-in-out infinite;
+  }
+  .orivane-motion-ready .motion-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 520ms ease, transform 620ms cubic-bezier(.2,.7,.25,1);
+    will-change: opacity, transform;
+  }
+  .orivane-motion-ready .motion-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    will-change: auto;
+  }
+  .orivane-motion-ready .suggestion,
+  .orivane-motion-ready .tool-card,
+  .orivane-motion-ready .feature-strip > div,
+  .orivane-motion-ready .side-link,
+  .orivane-motion-ready .new-chat,
+  .orivane-motion-ready .header-action,
+  .orivane-motion-ready .composer-tools button {
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  }
+  .orivane-motion-ready .suggestion:hover,
+  .orivane-motion-ready .tool-card:hover,
+  .orivane-motion-ready .feature-strip > div:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(255,138,50,.09);
+  }
+  .orivane-motion-ready .new-chat:hover,
+  .orivane-motion-ready .header-action:hover,
+  .orivane-motion-ready .composer-tools button:hover {
+    transform: translateY(-1px);
+  }
+  .orivane-motion-ready button:active:not(:disabled) {
+    transform: scale(.985);
+  }
+  .orivane-motion-ready .chat-form {
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+  .orivane-motion-ready .chat-form:focus-within {
+    box-shadow: 0 15px 55px var(--shadow), 0 0 0 3px rgba(255,138,50,.07);
+  }
+  .orivane-motion-ready .message-icon {
+    transition: transform 220ms ease, box-shadow 220ms ease;
+  }
+  .orivane-motion-ready .assistant-message:hover .message-icon {
+    transform: translateY(-2px) rotate(-4deg);
+    box-shadow: 0 5px 18px rgba(255,138,50,.13);
+  }
+  .orivane-motion-ready .online-dot {
+    animation: orivane-pulse 2.6s ease-in-out infinite;
+  }
+  .orivane-motion-ready .motion-reveal .suggestion:nth-child(2),
+  .orivane-motion-ready .motion-reveal .tool-card:nth-child(2) { transition-delay: 45ms; }
+  .orivane-motion-ready .motion-reveal .suggestion:nth-child(3),
+  .orivane-motion-ready .motion-reveal .tool-card:nth-child(3) { transition-delay: 90ms; }
+  .orivane-motion-ready .motion-reveal .suggestion:nth-child(4),
+  .orivane-motion-ready .motion-reveal .tool-card:nth-child(4) { transition-delay: 135ms; }
+  .orivane-motion-ready .motion-reveal .suggestion:nth-child(5),
+  .orivane-motion-ready .motion-reveal .tool-card:nth-child(5) { transition-delay: 180ms; }
+  .orivane-motion-ready .motion-reveal .suggestion:nth-child(6),
+  .orivane-motion-ready .motion-reveal .tool-card:nth-child(6) { transition-delay: 225ms; }
+}
+@keyframes orivane-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes orivane-orbit { to { rotate: 360deg; } }
+@keyframes orivane-float { 50% { transform: translateY(-5px); } }
+@keyframes orivane-pulse { 50% { box-shadow: 0 0 0 5px rgba(255,138,50,.08), 0 0 15px rgba(255,138,50,.35); } }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
