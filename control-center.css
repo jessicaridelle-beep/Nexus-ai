@@ -1,0 +1,42 @@
+/* ORIVANE Control Center — themeable dashboard, widgets and subtle ambient effects */
+:root{--orivane-card-radius:16px}
+.orivane-dashboard{position:relative;z-index:1;margin:16px 30px 4px;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--panel) 94%,var(--accent) 6%),var(--panel));box-shadow:0 12px 34px var(--shadow)}
+.orivane-dashboard-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.orivane-dashboard-head h2{font:700 13px 'Space Grotesk',sans-serif;margin:0;letter-spacing:.2px}
+.orivane-dashboard-head p{font-size:10px;color:var(--muted);margin:4px 0 0}
+.orivane-dashboard-clock{font:600 12px 'Space Grotesk',sans-serif;color:var(--accent);font-variant-numeric:tabular-nums}
+.orivane-widget-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr;gap:9px}
+.orivane-widget{min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:color-mix(in srgb,var(--panel2) 88%,transparent)}
+.orivane-widget-label{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.orivane-widget-value{display:block;font:700 16px 'Space Grotesk',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.orivane-widget-detail{display:block;font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.orivane-widget-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.orivane-widget-actions button,.orivane-dashboard-button{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:9px;padding:8px 10px;font-size:10px;font-weight:700}
+.orivane-widget-actions button:hover,.orivane-dashboard-button:hover{border-color:var(--accent);color:var(--accent)}
+.orivane-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#d69a45;margin-right:6px}
+.orivane-status-dot.good{background:#39bd82;box-shadow:0 0 9px #39bd8266}
+.orivane-status-dot.bad{background:#d56a6a}
+.orivane-control-overlay{position:fixed;inset:0;z-index:150;background:#05070bdc;backdrop-filter:blur(13px);display:grid;place-items:center;padding:18px}
+.orivane-control-overlay[hidden]{display:none}
+.orivane-control-modal{width:min(560px,100%);max-height:88vh;overflow:auto;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--panel);color:var(--text);box-shadow:0 24px 80px #0008}
+.orivane-control-modal h2{font:700 21px 'Space Grotesk',sans-serif;margin:0 0 7px}
+.orivane-control-modal p{font-size:12px;color:var(--muted);line-height:1.55}
+.orivane-control-close{float:right;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:9px;width:32px;height:32px;font-size:19px}
+.orivane-theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.orivane-theme-choice{display:flex;align-items:center;gap:10px;text-align:left;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font-size:12px;font-weight:700}
+.orivane-theme-choice[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent)}
+.orivane-theme-swatch{width:36px;height:30px;border-radius:8px;flex:none;border:1px solid #ffffff30}
+.orivane-history-tools{display:grid;grid-template-columns:1fr;gap:6px;padding:0 3px 7px}
+.orivane-history-tools input,.orivane-history-tools select{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--panel);color:var(--text);font:11px 'DM Sans',sans-serif}
+.orivane-history-tools input::placeholder{color:var(--muted)}
+.history-folder{max-width:82px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--muted);font-size:9px;padding:4px}
+.history-item{min-width:0}
+#orivaneParticleCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.42}
+body[data-orivane-theme="arctic"]{color-scheme:light}
+body[data-orivane-theme="ember"],body[data-orivane-theme="violet"],body[data-orivane-theme="forest"]{color-scheme:dark}
+body[data-orivane-theme="arctic"] .sidebar{background:rgba(247,250,255,.94);backdrop-filter:blur(18px)}
+body[data-orivane-theme="arctic"] .topbar{background:rgba(242,247,253,.94)}
+body[data-orivane-theme="arctic"] .side-link.active,body[data-orivane-theme="arctic"] .side-link:hover{background:#142c4810}
+@media(max-width:950px){.orivane-widget-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.orivane-dashboard{margin:12px 18px 4px}}
+@media(max-width:560px){.orivane-dashboard{margin:10px 12px 4px;padding:12px}.orivane-widget-grid{gap:7px}.orivane-widget{padding:9px}.orivane-widget-value{font-size:14px}.orivane-theme-grid{grid-template-columns:1fr}.orivane-dashboard-head{align-items:flex-start;flex-direction:column}.orivane-dashboard-clock{font-size:11px}}
+@media(prefers-reduced-motion:reduce){#orivaneParticleCanvas{display:none}.orivane-widget-actions button,.orivane-dashboard-button{transition:none!important}}
