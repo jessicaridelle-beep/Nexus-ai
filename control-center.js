@@ -29,7 +29,7 @@ function applyTheme(key){
  const theme=themes[key]||themes.ember,vars=theme.vars,style=document.body.style;
  ["--bg","--panel","--panel2","--text","--muted","--accent","--accent2","--line","--shadow"].forEach((name,i)=>style.setProperty(name,vars[i]));
  document.body.dataset.orivaneTheme=key;document.body.classList.toggle("light",key==="arctic");
- localStorage.setItem(THEME_KEY,key);
+ localStorage.setItem(THEME_KEY,key);localStorage.setItem("orivane-theme",key==="arctic"?"light":"dark");
  document.querySelectorAll(".orivane-theme-choice").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.theme===key)));
  const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=vars[0];
 }
@@ -141,10 +141,11 @@ function installTypingAnimation(){
 }
 let themeStudio;
 function init(){
- applyTheme(localStorage.getItem(THEME_KEY)||"ember");
+ applyTheme(localStorage.getItem(THEME_KEY)||(localStorage.getItem("orivane-theme")==="light"?"arctic":"ember"));
  themeStudio=buildThemeStudio();
  buildDashboard();buildAmbient();buildHistoryTools();enhanceCommandPalette();installTypingAnimation();
- $("commandPaletteOpen")?.addEventListener("click",()=>{const search=$("orivaneCommandSearch");if(search){search.value="";setTimeout(()=>search.focus(),0);}});
+ $("commandPaletteOpen")?.addEventListener("click",()=>{const search=$("orivaneCommandSearch");if(search){search.value="";search.dispatchEvent(new Event("input"));setTimeout(()=>search.focus(),0);}});
+ $("themeToggle")?.addEventListener("click",()=>{const current=localStorage.getItem(THEME_KEY)||"ember";applyTheme(current==="arctic"?"ember":"arctic");});
  document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openCommandPalette();}});
  document.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>tone("tap"),{passive:true}));
 }
