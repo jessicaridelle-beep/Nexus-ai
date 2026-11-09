@@ -21,7 +21,7 @@
  }
  function previewUrl(item){
    const media=item?.media_formats||item?.media||item?.images||item?.file||item?.content||{};
-   const candidates=[media?.tinygif?.url,media?.nanogif?.url,item?.preview_url,item?.thumbnail_url,media?.preview?.url,media?.tiny?.url,media?.fixed_width_small?.url,media?.fixed_height_small?.url,media?.fixed_width?.url,media?.gif?.url,media?.url,media?.original?.url];
+   const candidates=[media?.tinygif?.url,media?.nanogif?.url,item?.preview?.url,item?.preview_url,item?.thumbnail_url,media?.preview?.url,media?.tiny?.url,media?.fixed_width_small?.url,media?.fixed_height_small?.url,media?.fixed_width?.url,media?.gif?.url,media?.url,media?.original?.url];
    return candidates.find(x=>typeof x==="string"&&/^https:\/\//i.test(x))||mediaUrl(item);
  }
 
@@ -95,8 +95,8 @@
    const label=document.createElement("span");label.textContent="＋ Send";
    card.append(img,label);
    card.addEventListener("click",()=>{
-    if(typeof window.sendMessage!=="function"){status.textContent="Chat is not ready yet.";return;}
-    show(false);window.sendMessage(url);
+    if(typeof window.sendGifUrlToChat!=="function"){status.textContent="Chat is not ready yet.";return;}
+    show(false);window.sendGifUrlToChat(url);
    });
    grid.append(card);
   });
@@ -160,7 +160,9 @@
  });
  $("gifAddToChat")?.addEventListener("click",()=>{if(generatedGifUrl&&window.sendGifUrlToChat(generatedGifUrl)){createStatus.textContent="GIF added to chat.";show(false);}});
  $("gifRecreate")?.addEventListener("click",()=>{generatedGifUrl="";createResult.hidden=true;createStatus.textContent="Edit your prompt or generate another version.";createForm.requestSubmit();});
- const attribution=document.createElement("div");attribution.className="gif-attribution";attribution.textContent="GIF search by KLIPY · GIF creation by ORIVANE AI";panel.append(attribution);
+ const attribution=document.createElement("div");attribution.className="gif-attribution";attribution.textContent="GIF search by KLIPY / Tenor · GIF creation by ORIVANE AI";panel.append(attribution);
+ let searchTimer=null;
+ query.addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>load(query.value.trim()),350);});
  form.addEventListener("submit",e=>{e.preventDefault();load(query.value.trim());});
  panel.querySelectorAll("[data-gif-search]").forEach(b=>b.addEventListener("click",()=>{query.value=b.dataset.gifSearch;load(query.value);}));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden)show(false);});
