@@ -426,7 +426,8 @@ export default {
       if (!input || typeof input!=="object" || Array.isArray(input)) return authReply({error:"Enter valid authentication details."},400);
       const username=String(input.username||"").trim().normalize("NFKC");
       const password=String(input.password||"");
-      if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) return authReply({error:"Username must be 3–24 characters using letters, numbers or underscores."},400);
+      const isOwnerClaim=requestedAction==="auth-owner-claim";
+      if (isOwnerClaim ? username.toLowerCase()!=="jr" : !/^[A-Za-z0-9_]{3,24}$/.test(username)) return authReply({error:isOwnerClaim?"The protected owner username must be JR.":"Username must be 3–24 characters using letters, numbers or underscores."},400);
       if (password.length<10 || password.length>128) return authReply({error:"Password must be between 10 and 128 characters."},400);
       const ip=request.headers.get("CF-Connecting-IP")||"unknown";
       const attemptKey=await digest(ip+"|"+username.toLowerCase());
