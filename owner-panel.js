@@ -44,7 +44,7 @@ function open(){
    const welcome=input(form,"Welcome headline","textarea",cfg.welcome,{rows:"2",maxlength:"100"});
    const actions=node("div",{class:"admin-inline-actions"});
    const reset=node("button",{class:"owner-secondary",type:"button"},"↺ Reset names");
-   reset.onclick=()=>{app.value=defaults.appName;assistant.value=defaults.assistantName;};
+   reset.onclick=()=>{cfg.appName=defaults.appName;cfg.assistantName=defaults.assistantName;app.value=cfg.appName;assistant.value=cfg.assistantName;localStorage.setItem(KEY,JSON.stringify(cfg));apply();recordChange("Reset the local website and assistant display names to ORIVANE.");reset.textContent="Names reset ✓"};
    const save=node("button",{class:"owner-primary",type:"button"},"Save appearance");
    save.onclick=()=>{
     const oldName=cfg.appName,oldAssistant=cfg.assistantName;
