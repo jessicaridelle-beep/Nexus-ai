@@ -77,7 +77,7 @@ function openDashboard(user){
  if(!user||user.role!=="owner"){closeOverlay();return;}
  showOverlay(dash.overlay);loadStatus();
 }
-function openSetup(){if(window.signedInUser&&window.signedInUser.role==="owner"){openDashboard(window.signedInUser);return;}showOverlay(setup.overlay);}
+function openSetup(){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user&&user.role==="owner"){openDashboard(user);return;}showOverlay(setup.overlay);}
 function syncOwnerEntry(){
  const user=typeof signedInUser!=="undefined"?signedInUser:null;
  let button=$("profileOpen");
