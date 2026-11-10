@@ -59,6 +59,8 @@ async function getOrivaneProjectContext(question, env) {
   if (/\b(worker|backend|api|server|model|search|ai|version|deployment)\b/i.test(q)) selected.add("worker.js");
   if (/\b(script|javascript|frontend|chat|message|memory|browser)\b/i.test(q)) selected.add("script.js");
   if (/\b(style|css|design|theme|layout)\b/i.test(q)) selected.add("style.css");
+  if (/\b(admin|control center|control centre|owner panel|global ai|website changes|change log|site settings|appearance)\b/i.test(q)) { selected.add("owner-panel.js"); selected.add("owner-panel.css"); selected.add("sw.js"); }
+  if (/\b(install|service worker|offline|pwa|cache)\b/i.test(q)) { selected.add("sw.js"); selected.add("install.js"); selected.add("manifest.json"); }
   if (/\b(project|workspace|action studio|status|wip|soon)\b/i.test(q)) selected.add("workspace.js");
   if (/\b(feature|feature(s)?|tool|settings|profile)\b/i.test(q)) selected.add("features.js");
   if (/\b(gif|klipy|tenor)\b/i.test(q)) selected.add("gif-picker.js");
