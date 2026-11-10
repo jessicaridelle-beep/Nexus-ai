@@ -1,50 +1,29 @@
-/* ORIVANE Admin Panel — read-only project controls and system status. */
+/* ORIVANE Personal Admin Center — settings are isolated to this browser. */
 (()=>{
 "use strict";
-const API="https://nexus-ai-api.jessicaridelle.workers.dev/";
-const $=id=>document.getElementById(id);
-let overlay=null;
-function openPanel(){
- if(overlay){overlay.hidden=false;refresh();return;}
- overlay=document.createElement("div");overlay.className="owner-overlay";overlay.id="orivaneAdminPanel";
- const card=document.createElement("section");card.className="owner-card";card.setAttribute("role","dialog");card.setAttribute("aria-modal","true");
- const close=document.createElement("button");close.className="owner-close";close.type="button";close.textContent="×";close.setAttribute("aria-label","Close");close.addEventListener("click",()=>overlay.hidden=true);
- const kicker=document.createElement("div");kicker.className="owner-kicker";kicker.textContent="ORIVANE · ADMIN";
- const title=document.createElement("h2");title.className="owner-title";title.textContent="Admin Command Center";
- const sub=document.createElement("p");sub.className="owner-sub";sub.textContent="Project overview · System status · Quick access";
- const header=document.createElement("div");header.className="owner-head";header.append(kicker,title,sub,close);card.append(header);
- const grid=document.createElement("div");grid.className="owner-grid";
- function tile(label,value,detail){const el=document.createElement("article");el.className="owner-tile";const small=document.createElement("small"),strong=document.createElement("strong"),p=document.createElement("p");small.textContent=label;strong.textContent=value;p.textContent=detail;el.append(small,strong,p);grid.append(el);return {value:strong,detail:p};}
- const api=tile("API STATUS","Checking…","Cloudflare Worker");
- const ai=tile("AI MODELS","Loading…","Fast · Thinking · Pro");
- const build=tile("BUILD VERSION","—","ORIVANE application build");
- const features=tile("WORKSPACE","Available","Chat · Canvas · GIF Studio · Projects");
- card.append(grid);
- const actions=document.createElement("div");actions.className="owner-actions";
- const refreshButton=document.createElement("button");refreshButton.type="button";refreshButton.textContent="↻ Refresh status";refreshButton.addEventListener("click",refresh);
- const repo=document.createElement("a");repo.href="https://github.com/jessicaridelle-beep/Nexus-ai";repo.target="_blank";repo.rel="noopener noreferrer";repo.textContent="Open GitHub repository ↗";
- const site=document.createElement("a");site.href="https://jessicaridelle-beep.github.io/Nexus-ai/";site.target="_blank";site.rel="noopener noreferrer";site.textContent="Open live website ↗";
- actions.append(refreshButton,repo,site);card.append(actions);
- const note=document.createElement("p");note.className="owner-foot";note.textContent="This version provides project visibility and quick links. Sensitive account, billing, deployment, and database controls are not exposed in this public panel.";card.append(note);
- overlay.append(card);overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.hidden=true;});document.body.append(overlay);
- async function refresh(){
-  api.value.textContent="Checking…";ai.value.textContent="Loading…";
-  try{
-   const [hr,ir]=await Promise.all([fetch(API+"?action=health",{cache:"no-store"}),fetch(API+"?action=site-info",{cache:"no-store"})]);
-   if(!hr.ok||!ir.ok)throw new Error("Status endpoint unavailable");
-   const health=await hr.json(),info=await ir.json(),models=info.modelsByMode||{};
-   api.value.textContent=health.services?.aiChat?"Online":"Degraded";
-   api.detail.textContent="Secure auth: "+(health.services?.secureAuth?"available":"not ready")+" · AI chat: "+(health.services?.aiChat?"available":"unavailable");
-   ai.value.textContent="3 configured";
-   ai.detail.textContent="Fast: "+(models.fast||"—")+" · Thinking: "+(models.thinking||"—")+" · Pro: "+(models.pro||"—");
-   build.value.textContent=info.version||"Unknown";
-  }catch(error){api.value.textContent="Unavailable";api.detail.textContent="Could not retrieve live system status.";ai.value.textContent="Unavailable";build.value.textContent="—";}
+const API="https://nexus-ai-api.jessicaridelle.workers.dev/",KEY="orivane-personal-admin-v1";
+const defaults={appName:"ORIVANE",assistantName:"ORIVANE",accent:"#ff8a32",welcome:"Where will your curiosity take you?",instructions:"",defaultMode:"fast",model:"auto",temperature:.6,maxTokens:1200,research:false};
+const $=id=>document.getElementById(id),read=()=>{try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch{return {...defaults}}};
+let cfg=read(),overlay=null;
+function apply(){document.documentElement.style.setProperty("--accent",cfg.accent);document.documentElement.style.setProperty("--accent2",cfg.accent);const brand=document.querySelector(".brand");if(brand){brand.setAttribute("aria-label",cfg.appName);const label=brand.querySelector(":scope > span:last-child");if(label)label.textContent=cfg.appName;}document.title=cfg.appName+" — Personal AI Workspace";const h=document.querySelector("#welcome h1");if(h)h.textContent=cfg.welcome;document.querySelectorAll(".assistant-message .message-body>b").forEach(x=>x.textContent=cfg.assistantName+" 🟠");}
+function node(tag,attrs={},txt){const n=document.createElement(tag);for(const [k,v] of Object.entries(attrs)){if(k==="class")n.className=v;else n.setAttribute(k,v)}if(txt!==undefined)n.textContent=txt;return n}
+function input(parent,label,type,value,attrs={}){const l=node("label",{class:"admin-field"});l.append(node("span",{},label));const x=node(type==="textarea"?"textarea":"input",type==="textarea"?attrs:{type,...attrs});x.value=value;l.append(x);parent.append(l);return x}
+function open(){
+ if(overlay){overlay.hidden=false;return}
+ overlay=node("div",{class:"owner-overlay"});const card=node("section",{class:"owner-card admin-card",role:"dialog","aria-modal":"true"});
+ const close=node("button",{class:"owner-close",type:"button","aria-label":"Close"},"×");close.onclick=()=>overlay.hidden=true;
+ const head=node("div",{class:"owner-head"}),intro=node("div");intro.append(node("div",{class:"owner-kicker"},"ORIVANE · PERSONAL ADMIN"),node("h2",{class:"owner-title"},"Control Center"),node("p",{class:"owner-sub"},"Your settings are saved on this device only. Other visitors keep their own experience."));head.append(intro,close);card.append(head);
+ const tabs=node("div",{class:"admin-tabs"}),content=node("div",{class:"admin-content"});card.append(tabs,content);overlay.append(card);overlay.onclick=e=>{if(e.target===overlay)overlay.hidden=true};document.body.append(overlay);
+ let active="Overview";const names=["Overview","Appearance","AI controls","Visitors"];
+ function render(){tabs.replaceChildren();names.forEach(name=>{const b=node("button",{type:"button",class:name===active?"active":""},name);b.onclick=()=>{active=name;render()};tabs.append(b)});content.replaceChildren();
+ if(active==="Overview"){const grid=node("div",{class:"owner-grid"});[[ "LOCAL NAME",cfg.appName,"Only this browser"],["DEFAULT MODE",cfg.defaultMode.toUpperCase(),"Your preferred response mode"],["MODEL",cfg.model==="auto"?"Automatic":cfg.model.toUpperCase(),"Configured model routing"],["SETTINGS","Saved locally","Other visitors are unaffected"]].forEach(([a,b,c])=>{const t=node("article",{class:"owner-tile"});t.append(node("small",{},a),node("strong",{},b),node("p",{},c));grid.append(t)});content.append(grid)}
+ if(active==="Appearance"){const form=node("div",{class:"admin-form"});const app=input(form,"Website / interface name","text",cfg.appName,{maxlength:"32"}),assistant=input(form,"Assistant display name","text",cfg.assistantName,{maxlength:"32"}),accent=input(form,"Accent colour","color",cfg.accent),welcome=input(form,"Welcome headline","textarea",cfg.welcome,{rows:"2",maxlength:"100"});const note=node("p",{class:"owner-foot"},"These changes are visual and local. They do not rename the public website.");const save=node("button",{class:"owner-primary",type:"button"},"Save appearance");save.onclick=()=>{cfg.appName=app.value.trim().slice(0,32)||defaults.appName;cfg.assistantName=assistant.value.trim().slice(0,32)||defaults.assistantName;cfg.accent=/^#[\da-f]{6}$/i.test(accent.value)?accent.value:defaults.accent;cfg.welcome=welcome.value.trim().slice(0,100)||defaults.welcome;localStorage.setItem(KEY,JSON.stringify(cfg));apply();save.textContent="Saved on this device ✓"};form.append(note,save);content.append(form)}
+ if(active==="AI controls"){const form=node("div",{class:"admin-form"}),modeLabel=node("label",{class:"admin-field"});modeLabel.append(node("span",{},"Default response mode"));const mode=node("select");[["fast","Fast"],["thinking","Thinking"],["pro","Pro"]].forEach(([v,t])=>mode.append(node("option",{value:v},t)));mode.value=cfg.defaultMode;modeLabel.append(mode);form.append(modeLabel);const modelLabel=node("label",{class:"admin-field"});modelLabel.append(node("span",{},"AI model"));const model=node("select");[["auto","Automatic"],["fast","GLM 4.7 Flash"],["thinking","GPT-OSS 20B"],["pro","GPT-OSS 120B"]].forEach(([v,t])=>model.append(node("option",{value:v},t)));model.value=cfg.model;modelLabel.append(model);form.append(modelLabel);const temp=input(form,"Creativity (0–1.2)","number",cfg.temperature,{min:"0",max:"1.2",step:".1"}),tokens=input(form,"Maximum answer length (256–2000 tokens)","number",cfg.maxTokens,{min:"256",max:"2000",step:"64"}),instructions=input(form,"Personal AI instructions","textarea",cfg.instructions,{rows:"5",maxlength:"1200",placeholder:"How should the AI respond on this device?"});const checkLabel=node("label",{class:"admin-check"}),check=node("input",{type:"checkbox"});check.checked=cfg.research;checkLabel.append(check,node("span",{},"Enable research mode by default"));form.append(checkLabel,node("p",{class:"owner-foot"},"These preferences are sent with your chat requests only. Model choices are limited to the site's configured models."));const save=node("button",{class:"owner-primary",type:"button"},"Save AI settings");save.onclick=()=>{cfg.defaultMode=["fast","thinking","pro"].includes(mode.value)?mode.value:"fast";cfg.model=["auto","fast","thinking","pro"].includes(model.value)?model.value:"auto";cfg.temperature=Math.max(0,Math.min(1.2,Number(temp.value)||0));cfg.maxTokens=Math.max(256,Math.min(2000,Number(tokens.value)||1200));cfg.instructions=instructions.value.slice(0,1200);cfg.research=check.checked;localStorage.setItem(KEY,JSON.stringify(cfg));localStorage.setItem("orivane-response-mode",cfg.defaultMode);apply();save.textContent="Saved on this device ✓"};form.append(save);content.append(form)}
+ if(active==="Visitors"){const grid=node("div",{class:"owner-grid"});const a=node("article",{class:"owner-tile"});a.append(node("small",{},"VISITORS ACTIVE NOW"),node("strong",{id:"visitorActive"},"Loading…"),node("p",{},"Approximate anonymous sessions active in the last 90 seconds"));const b=node("article",{class:"owner-tile"});b.append(node("small",{},"VISITS · LAST 24 HOURS"),node("strong",{id:"visitorDay"},"Loading…"),node("p",{},"Anonymous browser IDs, not named people"));grid.append(a,b);content.append(grid);const refresh=node("button",{class:"owner-primary",type:"button"},"↻ Refresh visitor count");refresh.onclick=refreshVisitors;content.append(refresh,node("p",{class:"owner-foot"},"The counter uses a random browser ID and timestamps only; no names, emails or chat contents are collected."));refreshVisitors()}
  }
- refresh();
+ render();
 }
-const profile=$("profileOpen");
-if(profile&&!$("adminPanelOpen")){
- const button=document.createElement("button");button.type="button";button.id="adminPanelOpen";button.className="header-action";button.textContent="♛ Admin Panel";button.addEventListener("click",openPanel);profile.after(button);
-}
-window.ORIVANE_ADMIN_PANEL={open:openPanel};
+async function refreshVisitors(){try{let id=localStorage.getItem("orivane-anon-visitor-id");if(!id){id=crypto.randomUUID();localStorage.setItem("orivane-anon-visitor-id",id)}await fetch(API+"?action=visitor-heartbeat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitorId:id})});const r=await fetch(API+"?action=visitor-stats",{cache:"no-store"});if(!r.ok)throw Error();const d=await r.json();if($("visitorActive"))$("visitorActive").textContent=d.activeNow??"—";if($("visitorDay"))$("visitorDay").textContent=d.visits24h??"—"}catch{if($("visitorActive"))$("visitorActive").textContent="Unavailable";if($("visitorDay"))$("visitorDay").textContent="Unavailable"}}
+function heartbeat(){let id=localStorage.getItem("orivane-anon-visitor-id");if(!id){id=crypto.randomUUID();localStorage.setItem("orivane-anon-visitor-id",id)}fetch(API+"?action=visitor-heartbeat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitorId:id})}).catch(()=>{})}
+apply();const profile=$("profileOpen");if(profile&&!$("adminPanelOpen")){const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");b.onclick=open;profile.after(b)}window.ORIVANE_ADMIN_PANEL={open};heartbeat();setInterval(heartbeat,30000);
 })();
