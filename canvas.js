@@ -198,7 +198,7 @@
     });
   });
 
-  window.OrivaneCanvas = {
+  document.querySelectorAll("[data-studio-launch]").forEach((button) => {\n    button.addEventListener("click", () => {\n      const studio = button.dataset.studioLaunch;\n      document.querySelector(".studio-nav[data-studio=\\"" + studio + "\\"]")?.click();\n    });\n  });\n\n  window.OrivaneCanvas = {
     openLast: () => artifactStore.length ? openCanvas(artifactStore[artifactStore.length - 1]) : false,
     getCount: () => artifactStore.length
   };
