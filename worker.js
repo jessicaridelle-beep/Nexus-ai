@@ -42,6 +42,7 @@ async function getOrivaneProjectContext(question) {
     "Website: " + PROJECT_SITE,
     "Repository: https://github.com/" + PROJECT_REPO,
     "Runtime model configured in Worker: " + MODEL,
+    "Fast, Thinking and Pro can use separate ORIVANE_MODEL_FAST, ORIVANE_MODEL_THINKING and ORIVANE_MODEL_PRO Worker variables. Each mode currently falls back to the default model if its override is not configured.",
     "Application build version: " + ORIVANE_VERSION + ". This is separate from the configured model version.",
     "Conversation context: you receive only the messages included in the current API request (the website currently sends up to 12 recent messages). The browser can optionally save up to 30 recent messages locally when the user enables Memory; this is device-local, not cloud-synced.",
     "Current capabilities: AI chat; optional live web search; public HTTPS page reading when the user supplies a URL; local conversation memory; image generation through the configured image model; GIF search and GIF generation; project/workspace tools; and sandboxed ORIVANE Canvas HTML previews when requested.",
@@ -697,12 +698,18 @@ export default {
         ? "ORIVANE CANVAS OUTPUT: The user explicitly asked for an interface or UI. Create a complete, polished, responsive, genuinely interactive HTML interface. Return a short natural introduction followed by exactly one fenced code block labelled orivane-ui. You may add title and description attributes to the fence. Inside the block include BODY CONTENT ONLY: inline style, semantic HTML, and vanilla JavaScript. Do not include html/head/body wrappers. No external libraries, CDN scripts, remote fonts, or network calls. Make controls work locally; add realistic sample data only when clearly presented as demo data. Use accessible labels, responsive layouts, attractive spacing, and the ORIVANE orange accent tastefully. Do not say the code was tested or deployed. Output one Canvas block only when this request asks for a UI; otherwise never emit this format."
         : "ORIVANE CANVAS: Do not emit a Canvas block unless the user explicitly asks to build, create, design, generate, or prototype a user interface, dashboard, app screen, or webpage.";
       const responseMode = ["fast","thinking","pro"].includes(body.mode) ? body.mode : "fast";
+      const configuredModels = {
+        fast: env.ORIVANE_MODEL_FAST || MODEL,
+        thinking: env.ORIVANE_MODEL_THINKING || MODEL,
+        pro: env.ORIVANE_MODEL_PRO || MODEL
+      };
+      const activeModel = configuredModels[responseMode] || MODEL;
       const modeInstruction = responseMode === "thinking"
         ? "RESPONSE MODE: THINKING. Take extra care with complex questions. Work through the problem methodically before answering, check assumptions, and explain the key reasoning clearly. Do not expose private chain-of-thought; provide a concise rationale and useful steps instead."
         : responseMode === "pro"
           ? "RESPONSE MODE: PRO. Aim for a thorough, polished, high-quality answer. Handle complexity carefully, structure information clearly, include useful examples and caveats, and avoid unnecessary verbosity."
           : "RESPONSE MODE: FAST. Prioritise direct, quick, concise answers. Focus on the most useful response without unnecessary detail.";
-      const result = await env.AI.run(MODEL, {
+      const result = await env.AI.run(activeModel, {
         messages: [
           { role: "system", content: modeInstruction },
           { role: "system", content: canvasInstruction },
@@ -721,7 +728,7 @@ export default {
 
       const reply = result && typeof result.response === "string" ? result.response : "";
       if (!reply.trim()) return json({ error: "The AI model did not return a response." }, 502);
-      return json({ reply, webSearchStatus, websiteVisitStatus: websiteVisit.status, canvasGenerated: wantsCanvas && reply.includes("```orivane-ui") });
+      return json({ reply, webSearchStatus, websiteVisitStatus: websiteVisit.status, canvasGenerated: wantsCanvas && reply.includes("```orivane-ui"), mode: responseMode, model: activeModel });
     } catch (error) {
       const message = error instanceof SyntaxError
         ? "The request body must be valid JSON."
