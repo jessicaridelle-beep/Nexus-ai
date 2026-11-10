@@ -71,10 +71,10 @@ let signedInUser=null;
 const authUrl="https://nexus-ai-api.jessicaridelle.workers.dev/";
  async function authIframeRequest(action,values={},method="POST"){
   const url=new URL(authUrl);url.searchParams.set("action",action);
-  const options={method,credentials:"include",cache:"no-store",headers:{}};
-  if(method!=="GET"){options.headers["Content-Type"]="application/json";options.body=JSON.stringify(values);}
+  const options={method,credentials:"include",cache:"no-store"};
+  if(method!=="GET"){const body=new URLSearchParams();for(const [key,value] of Object.entries(values))body.set(key,String(value));options.headers={"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"};options.body=body.toString();}
   let response;
-  try{response=await fetch(url.toString(),options);}catch(error){throw new Error("Secure account connection failed. Check your connection and try again.");}
+  try{response=await fetch(url.toString(),options);}catch(error){console.warn("ORIVANE account network request failed:",error);throw new Error("Secure account connection failed. Please check your connection and reload.");}
   let data={};try{data=await response.json();}catch{}
   if(!response.ok)throw new Error(data.error||"Secure account request failed ("+response.status+").");
   return data;
