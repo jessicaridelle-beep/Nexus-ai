@@ -30,7 +30,8 @@ async function getOrivaneProjectContext(question) {
   if (/\b(project|workspace|action studio|status|wip|soon)\b/i.test(q)) selected.add("workspace.js");
   if (/\b(feature|feature(s)?|tool|settings|profile)\b/i.test(q)) selected.add("features.js");
   if (/\b(gif|klipy|tenor)\b/i.test(q)) selected.add("gif-picker.js");
-  if (/\b(accessibility|gif)\b/i.test(q)) selected.add("gif-accessibility.js");\n  if (/\b(canvas|ui|gui|interface|dashboard|webpage|component)\b/i.test(q)) { selected.add("canvas.js"); selected.add("canvas.css"); }
+  if (/\b(accessibility|gif)\b/i.test(q)) selected.add("gif-accessibility.js");
+  if (/\b(canvas|ui|gui|interface|dashboard|webpage|component)\b/i.test(q)) { selected.add("canvas.js"); selected.add("canvas.css"); }
   if (/\b(code|source|all files|whole website|entire site|everything|repository|repo|architecture|how.*built)\b/i.test(q)) PUBLIC_SOURCE_FILES.forEach(x => selected.add(x));
   const files = [];
   for (const path of selected) {
