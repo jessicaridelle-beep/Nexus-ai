@@ -40,7 +40,18 @@ input.addEventListener("input",()=>{input.style.height="auto";input.style.height
 input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit();}});
 document.querySelectorAll("[data-prompt]").forEach(button=>button.addEventListener("click",()=>sendMessage(button.dataset.prompt)));
 document.getElementById("newChat").addEventListener("click",()=>{conversation.length=0;content.replaceChildren();if(memoryEnabled)localStorage.removeItem(MEMORY_KEY);welcome.hidden=false;chatNote.textContent="New conversation started.";input.value="";sidebar.classList.remove("open");document.getElementById("currentPage").textContent="Chat";window.scrollTo({top:0,behavior:"smooth"});});
-document.getElementById("menuButton").addEventListener("click",()=>sidebar.classList.toggle("open"));
+const desktopSidebarQuery=window.matchMedia("(min-width: 801px)");
+if(localStorage.getItem("orivane-sidebar-collapsed")==="true"&&desktopSidebarQuery.matches)document.body.classList.add("sidebar-collapsed");
+document.getElementById("menuButton").setAttribute("aria-label","Toggle navigation");
+document.getElementById("menuButton").setAttribute("title","Collapse or open navigation");
+document.getElementById("menuButton").addEventListener("click",()=>{
+ if(desktopSidebarQuery.matches){
+  const collapsed=document.body.classList.toggle("sidebar-collapsed");
+  localStorage.setItem("orivane-sidebar-collapsed",String(collapsed));
+ }else{
+  sidebar.classList.toggle("open");
+ }
+});
 document.getElementById("themeToggle").addEventListener("click",()=>{document.body.classList.toggle("light");localStorage.setItem("orivane-theme",document.body.classList.contains("light")?"light":"dark");});
 if(localStorage.getItem("orivane-theme")==="light")document.body.classList.add("light");
 document.querySelectorAll(".side-link").forEach(button=>button.addEventListener("click",()=>{if(button.dataset.view!=="chat"){chatNote.textContent=button.dataset.view==="projects"?"Projects workspace opened.":"Saved ideas are planned for a future update.";setTimeout(()=>{if(chatNote.textContent.includes("planned for a future update"))chatNote.textContent="Orivane can make mistakes. Check important information.";},3500);}else document.getElementById("currentPage").textContent="Chat";document.querySelectorAll(".side-link").forEach(b=>b.classList.toggle("active",b===button));sidebar.classList.remove("open");}));
