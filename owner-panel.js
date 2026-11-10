@@ -3,7 +3,7 @@
    Shared AI policy and website change notes require the authenticated owner account. */
 (()=> {
 "use strict";
-const API="https://nexus-ai-api.jessicaridelle.workers.dev/",KEY="orivane-personal-admin-v1",CHANGE_KEY="orivane-website-change-log-v1";
+const API="https://nexus-ai-api.workers.dev/",KEY="orivane-personal-admin-v1",CHANGE_KEY="orivane-website-change-log-v1";
 const defaults={appName:"ORIVANE",assistantName:"ORIVANE",accent:"#ff8a32",welcome:"Where will your curiosity take you?",instructions:"",defaultMode:"fast",model:"auto",temperature:.6,maxTokens:1200,research:false,websiteNotes:""};
 const $=id=>document.getElementById(id);
 const read=()=>{try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch{return {...defaults}}};
