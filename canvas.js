@@ -198,7 +198,14 @@
     });
   });
 
-  document.querySelectorAll("[data-studio-launch]").forEach((button) => {\n    button.addEventListener("click", () => {\n      const studio = button.dataset.studioLaunch;\n      Array.from(document.querySelectorAll(".studio-nav[data-studio]")).find((item) => item.dataset.studio === studio)?.click();\n    });\n  });\n\n  window.OrivaneCanvas = {
+  document.querySelectorAll("[data-studio-launch]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const studio = button.dataset.studioLaunch;
+      Array.from(document.querySelectorAll(".studio-nav[data-studio]")).find((item) => item.dataset.studio === studio)?.click();
+    });
+  });
+
+  window.OrivaneCanvas = {
     openLast: () => artifactStore.length ? openCanvas(artifactStore[artifactStore.length - 1]) : false,
     getCount: () => artifactStore.length
   };
