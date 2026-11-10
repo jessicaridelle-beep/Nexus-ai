@@ -116,19 +116,9 @@ async function installOwnerEntry(event){
    window.ORIVANE_ADMIN_PANEL={open};
    return;
   }
-  const ownerState=await api("auth-owner-status");
-  if(renderVersion!==ownerAuthRenderVersion||ownerState.claimed)return;
-  const setup=node("button",{type:"button",id:"ownerActivateOpen",class:"header-action"},"♛ Set up Admin Panel");
-  setup.onclick=async()=>{
-   const setupCode=window.prompt("Enter the private admin setup code:");
-   if(!setupCode)return;
-   setup.disabled=true;
-   try{
-    const result=await api("auth-owner-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({setupCode})});
-    window.dispatchEvent(new CustomEvent("orivane-auth-updated",{detail:{user:result.user}}));
-   }catch(error){window.alert(error.message||"Admin setup failed.");setup.disabled=false}
-  };
-  profile.after(setup);
+  // Admin access is assigned only by the Worker to the first registered account.
+  // Never offer an activation button to later visitors.
+  return;
  }catch(error){console.warn("ORIVANE admin controls are unavailable:",error.message)}
 }
 installOwnerEntry();
