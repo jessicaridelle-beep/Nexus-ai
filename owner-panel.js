@@ -83,7 +83,7 @@ function open(){
   const form=node("div",{class:"admin-form"});content.append(node("p",{class:"owner-foot"},"Global instructions affect ORIVANE for every visitor, including you. Only the verified owner account can read or change these settings."));
   const status=node("p",{class:"owner-status"},"Checking owner access…");content.append(status);
   try{
-   const user=await ownerStatus();if(!user){status.textContent="Owner access required. Sign in with the protected JR owner account using Profile / Sign in, then reopen this tab.";status.classList.add("error");return}
+   const user=await ownerStatus();if(!user){status.textContent="Owner access required. Sign in with the verified Ceo owner account, then reopen this tab.";status.classList.add("error");return}
    const data=await api("global-ai-settings");globalData={instructions:data.instructions||"",changeLog:data.changeLog||""};
    const instructions=input(form,"Global AI instructions","textarea",globalData.instructions,{rows:"6",maxlength:"4000",placeholder:"Set ORIVANE's shared tone, response rules, and priorities for everyone…"});
    const notes=input(form,"Shared website change log / site notes","textarea",globalData.changeLog,{rows:"7",maxlength:"8000",placeholder:"Describe website changes, new features, removed features, important UI behaviour, and how they work. ORIVANE receives these notes in every visitor's chat."});
@@ -97,6 +97,39 @@ function open(){
 }
 async function refreshVisitors(){try{let id=localStorage.getItem("orivane-anon-visitor-id");if(!id){id=crypto.randomUUID();localStorage.setItem("orivane-anon-visitor-id",id)}await fetch(API+"?action=visitor-heartbeat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitorId:id})});const r=await fetch(API+"?action=visitor-stats",{cache:"no-store"});if(!r.ok)throw Error();const d=await r.json();if($("visitorActive"))$("visitorActive").textContent=d.activeNow??"—";if($("visitorDay"))$("visitorDay").textContent=d.visits24h??"—"}catch{if($("visitorActive"))$("visitorActive").textContent="Unavailable";if($("visitorDay"))$("visitorDay").textContent="Unavailable"}}
 function heartbeat(){let id=localStorage.getItem("orivane-anon-visitor-id");if(!id){id=crypto.randomUUID();localStorage.setItem("orivane-anon-visitor-id",id)}fetch(API+"?action=visitor-heartbeat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitorId:id})}).catch(()=>{})}
-apply();const profile=$("profileOpen");if(profile&&!$("adminPanelOpen")){const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");b.onclick=open;profile.after(b)}
-window.ORIVANE_ADMIN_PANEL={open};heartbeat();setInterval(heartbeat,30000);
+apply();
+async function installOwnerEntry(){
+ try{
+  const auth=await api("auth-me");
+  const user=auth.authenticated?auth.user:null;
+  const profile=$("profileOpen");
+  if(!profile||!user)return;
+  if(user.role==="owner"){
+   if(!$("adminPanelOpen")){
+    const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");
+    b.onclick=open;profile.after(b);
+   }
+   window.ORIVANE_ADMIN_PANEL={open};
+   return;
+  }
+  if(String(user.username).toLowerCase()==="ceo"&&!$("ownerActivateOpen")){
+   const b=node("button",{type:"button",id:"ownerActivateOpen",class:"header-action"},"Activate owner access");
+   b.onclick=async()=>{
+    const setupCode=window.prompt("Enter your one-time owner setup code. It is checked securely and is never saved in this browser.");
+    if(!setupCode)return;
+    b.disabled=true;b.textContent="Verifying…";
+    try{
+     await api("auth-owner-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({setupCode})});
+     window.location.reload();
+    }catch(error){
+     window.alert(error.message||"Owner activation failed.");
+     b.disabled=false;b.textContent="Activate owner access";
+    }
+   };
+   profile.after(b);
+  }
+ }catch(error){console.warn("ORIVANE owner controls are unavailable:",error.message)}
+}
+installOwnerEntry();
+heartbeat();setInterval(heartbeat,30000);
 })();
