@@ -77,7 +77,7 @@ function openDashboard(user){
  if(!user||user.role!=="owner"){closeOverlay();return;}
  showOverlay(dash.overlay);loadStatus();
 }
-function openSetup(){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user&&user.role==="owner"){openDashboard(user);return;}showOverlay(setup.overlay);}
+async function openSetup(){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user&&user.role==="owner"){openDashboard(user);return;}try{const state=await authIframeRequest("auth-owner-status",{},"GET");if(state.claimed){setup.overlay.remove();return;}showOverlay(setup.overlay);}catch(error){setup.overlay.remove();console.warn("Owner activation status unavailable:",error.message);}}
 function syncOwnerEntry(){
  const user=typeof signedInUser!=="undefined"?signedInUser:null;
  let button=$("profileOpen");
@@ -89,8 +89,8 @@ const profileButton=$("profileOpen");
 if(profileButton){new MutationObserver(syncOwnerEntry).observe(profileButton,{childList:true,characterData:true,subtree:true});}
 setInterval(syncOwnerEntry,1500);
 function handleRoute(){
- if(location.hash==="#/vault/activate"){history.replaceState(null,"",location.pathname+location.search+"#/");openSetup();}
- else if(location.hash==="#/vault/ceo"){history.replaceState(null,"",location.pathname+location.search+"#/");const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user?.role==="owner")openDashboard(user);}
+ if(location.hash==="#/vault/activate"){openSetup();}
+ else if(location.hash==="#/vault/ceo"){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user?.role==="owner")openDashboard(user);}
 }
 window.addEventListener("hashchange",handleRoute);
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",handleRoute);else handleRoute();
