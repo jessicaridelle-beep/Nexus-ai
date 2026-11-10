@@ -80,10 +80,10 @@ function open(){
   }
  }
  async function renderGlobal(){
-  const form=node("div",{class:"admin-form"});content.append(node("p",{class:"owner-foot"},"Global instructions affect ORIVANE for every visitor, including you. Only the verified owner account can read or change these settings."));
+  const form=node("div",{class:"admin-form"});content.append(node("p",{class:"owner-foot"},"Global instructions affect ORIVANE for every visitor, including you. Only the account assigned Admin access can read or change these settings."));
   const status=node("p",{class:"owner-status"},"Checking owner access…");content.append(status);
   try{
-   const user=await ownerStatus();if(!user){status.textContent="Owner access required. Sign in with the verified Ceo owner account, then reopen this tab.";status.classList.add("error");return}
+   const user=await ownerStatus();if(!user){status.textContent="Admin access required. Sign in with the account assigned Admin access.";status.classList.add("error");return}
    const data=await api("global-ai-settings");globalData={instructions:data.instructions||"",changeLog:data.changeLog||""};
    const instructions=input(form,"Global AI instructions","textarea",globalData.instructions,{rows:"6",maxlength:"4000",placeholder:"Set ORIVANE's shared tone, response rules, and priorities for everyone…"});
    const notes=input(form,"Shared website change log / site notes","textarea",globalData.changeLog,{rows:"7",maxlength:"8000",placeholder:"Describe website changes, new features, removed features, important UI behaviour, and how they work. ORIVANE receives these notes in every visitor's chat."});
@@ -110,12 +110,26 @@ async function installOwnerEntry(event){
   $("ownerActivateOpen")?.remove();
   delete window.ORIVANE_ADMIN_PANEL;
   if(!profile||!user)return;
-  if(user.role==="owner"||String(user.username).toLowerCase()==="ceo"){
+  if(user.role==="owner"){
    const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");
    b.onclick=open;profile.after(b);
    window.ORIVANE_ADMIN_PANEL={open};
+   return;
   }
- }catch(error){console.warn("ORIVANE owner controls are unavailable:",error.message)}
+  const ownerState=await api("auth-owner-status");
+  if(renderVersion!==ownerAuthRenderVersion||ownerState.claimed)return;
+  const setup=node("button",{type:"button",id:"ownerActivateOpen",class:"header-action"},"♛ Set up Admin Panel");
+  setup.onclick=async()=>{
+   const setupCode=window.prompt("Enter the private admin setup code:");
+   if(!setupCode)return;
+   setup.disabled=true;
+   try{
+    const result=await api("auth-owner-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({setupCode})});
+    window.dispatchEvent(new CustomEvent("orivane-auth-updated",{detail:{user:result.user}}));
+   }catch(error){window.alert(error.message||"Admin setup failed.");setup.disabled=false}
+  };
+  profile.after(setup);
+ }catch(error){console.warn("ORIVANE admin controls are unavailable:",error.message)}
 }
 installOwnerEntry();
 window.addEventListener("orivane-auth-updated",installOwnerEntry);
