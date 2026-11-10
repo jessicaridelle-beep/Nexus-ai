@@ -98,9 +98,9 @@ function open(){
 async function refreshVisitors(){try{let id=localStorage.getItem("orivane-anon-visitor-id");if(!id){id=crypto.randomUUID();localStorage.setItem("orivane-anon-visitor-id",id)}await fetch(API+"?action=visitor-heartbeat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitorId:id})});const r=await fetch(API+"?action=visitor-stats",{cache:"no-store"});if(!r.ok)throw Error();const d=await r.json();if($("visitorActive"))$("visitorActive").textContent=d.activeNow??"—";if($("visitorDay"))$("visitorDay").textContent=d.visits24h??"—"}catch{if($("visitorActive"))$("visitorActive").textContent="Unavailable";if($("visitorDay"))$("visitorDay").textContent="Unavailable"}}
 function heartbeat(){let id=localStorage.getItem("orivane-anon-visitor-id");if(!id){id=crypto.randomUUID();localStorage.setItem("orivane-anon-visitor-id",id)}fetch(API+"?action=visitor-heartbeat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitorId:id})}).catch(()=>{})}
 apply();
-async function installOwnerEntry(){
+async function installOwnerEntry(event){
  try{
-  const auth=await api("auth-me");
+  const auth=event&&event.detail&&Object.prototype.hasOwnProperty.call(event.detail,"user")?{authenticated:!!event.detail.user,user:event.detail.user}:await api("auth-me");
   const user=auth.authenticated?auth.user:null;
   const profile=$("profileOpen");
   $("adminPanelOpen")?.remove();
