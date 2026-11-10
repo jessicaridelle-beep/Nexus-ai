@@ -1,4 +1,4 @@
-const VERSION = "orivane-shell-v5";
+const VERSION = "orivane-shell-v6";
 const BASE = new URL("./", self.location.href);
 const SHELL = [
   new URL("./", BASE).href,
@@ -8,7 +8,7 @@ const SHELL = [
   new URL("./control-center.css?v=1", BASE).href,
   new URL("./control-center.js?v=1", BASE).href,
   new URL("./motion.js?v=1", BASE).href,
-  new URL("./script.js?v=44", BASE).href,
+  new URL("./script.js?v=45", BASE).href,
   new URL("./gif-accessibility.js?v=3", BASE).href,
   new URL("./features.js?v=1", BASE).href,
   new URL("./workspace.js?v=25", BASE).href,
