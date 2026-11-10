@@ -359,7 +359,7 @@ export default {
       return json({ received: true });
     }
 
-    const authActions = ["auth-register","auth-login","auth-me","auth-logout","auth-owner-claim","early-access-status"];
+    const authActions = ["auth-register","auth-login","auth-me","auth-logout","auth-owner-claim","auth-owner-status","early-access-status"];
     if (authActions.includes(requestedAction)) {
       const authUrl = new URL(request.url);
       const iframeTransport = authUrl.searchParams.get("transport") === "iframe";
@@ -382,10 +382,14 @@ export default {
       if (!env.DB) return authReply({error:"Authentication storage is not connected."},503);
       if (iframeTransport && request.method === "POST" && origin !== SITE_ORIGIN) return authReply({error:"This website is not allowed to submit account changes."},403);
 
-      if (request.method === "GET" && !["auth-me","early-access-status"].includes(requestedAction)) return authReply({error:"Use POST for this action."},405);
+      if (request.method === "GET" && !["auth-me","auth-owner-status","early-access-status"].includes(requestedAction)) return authReply({error:"Use POST for this action."},405);
       if (request.method === "GET" && requestedAction === "auth-me") {
         const user=await currentUser(request,env.DB);
         return authReply({authenticated:!!user,user:user?{username:user.username,role:user.role}:null});
+      }
+      if (request.method === "GET" && requestedAction === "auth-owner-status") {
+        const claimed = await env.DB.prepare("SELECT value FROM auth_meta WHERE key=?").bind("jr_claimed").first();
+        return authReply({ claimed: !!claimed, activationAvailable: !claimed });
       }
       if (request.method === "GET" && requestedAction === "early-access-status") {
         const user=await currentUser(request,env.DB);
