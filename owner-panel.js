@@ -77,7 +77,7 @@ function openDashboard(user){
  if(!user||user.role!=="owner"){closeOverlay();return;}
  showOverlay(dash.overlay);loadStatus();
 }
-async function openSetup(){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user&&user.role==="owner"){openDashboard(user);return;}try{const state=await authIframeRequest("auth-owner-status",{},"GET");if(state.claimed){setup.overlay.remove();return;}showOverlay(setup.overlay);}catch(error){setup.overlay.remove();console.warn("Owner activation status unavailable:",error.message);}}
+async function openSetup(){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user&&user.role==="owner"){openDashboard(user);return;}try{const state=await authIframeRequest("auth-owner-status",{},"GET");if(state.claimed){setup.overlay.remove();return;}showOverlay(setup.overlay);}catch(error){showOverlay(setup.overlay);status.className="owner-status error";status.textContent="Could not verify activation status. Check the secure connection and try again.";console.warn("Owner activation status unavailable:",error.message);}}
 function syncOwnerEntry(){
  const user=typeof signedInUser!=="undefined"?signedInUser:null;
  let button=$("profileOpen");
@@ -86,7 +86,17 @@ function syncOwnerEntry(){
  }else{$("ownerPanelOpen")?.remove();}
 }
 const profileButton=$("profileOpen");
-if(profileButton){new MutationObserver(syncOwnerEntry).observe(profileButton,{childList:true,characterData:true,subtree:true});}
+if(profileButton){
+ const activationButton=document.createElement("button");
+ activationButton.type="button";activationButton.id="ownerActivateOpen";activationButton.className="header-action";
+ activationButton.textContent="♛ Founder activation";
+ activationButton.title="Open the private one-time owner activation page";
+ activationButton.addEventListener("click",()=>{location.hash="/vault/activate";});
+ profileButton.after(activationButton);
+ const checkActivationAvailability=async()=>{try{const state=await authIframeRequest("auth-owner-status",{},"GET");if(state.claimed){activationButton.remove();setup.overlay.remove();if(activeOverlay===setup.overlay)activeOverlay=null;}else if(!activationButton.isConnected){profileButton.after(activationButton);}}catch(error){console.warn("Founder activation status check failed:",error.message);}};
+ checkActivationAvailability();setInterval(checkActivationAvailability,10000);
+ new MutationObserver(syncOwnerEntry).observe(profileButton,{childList:true,characterData:true,subtree:true});
+}
 setInterval(syncOwnerEntry,1500);
 function handleRoute(){
  if(location.hash==="#/vault/activate"){openSetup();}
