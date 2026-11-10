@@ -494,12 +494,22 @@ export default {
         const salt=toB64(crypto.getRandomValues(new Uint8Array(16)));
         const hash=await passwordHash(password,salt);
         const id=crypto.randomUUID();
+        let assignedRole = isOwner ? "owner" : "user";
         try {
-          await env.DB.prepare("INSERT INTO users(id,username,password_hash,password_salt,password_iterations,role) VALUES(?,?,?,?,?,?)").bind(id,username,hash,salt,PASSWORD_ITERATIONS,isOwner?"owner":"user").run();
-          if (isOwner) await env.DB.prepare("INSERT INTO auth_meta(key,value) VALUES('jr_claimed','1')").run();
+          if (isOwner) {
+            await env.DB.prepare("INSERT INTO users(id,username,password_hash,password_salt,password_iterations,role) VALUES(?,?,?,?,?,?)").bind(id,username,hash,salt,PASSWORD_ITERATIONS,"owner").run();
+            await env.DB.prepare("INSERT INTO auth_meta(key,value) VALUES('jr_claimed','1')").run();
+          } else {
+            // The first account ever registered becomes the one-time site owner.
+            // The role decision happens inside the INSERT statement so simultaneous
+            // registrations cannot both become owner.
+            await env.DB.prepare("INSERT INTO users(id,username,password_hash,password_salt,password_iterations,role) SELECT ?,?,?,?,?,CASE WHEN NOT EXISTS (SELECT 1 FROM users WHERE role='owner') THEN 'owner' ELSE 'user' END").bind(id,username,hash,salt,PASSWORD_ITERATIONS).run();
+            const created = await env.DB.prepare("SELECT role FROM users WHERE id=?").bind(id).first();
+            assignedRole = created?.role === "owner" ? "owner" : "user";
+          }
         } catch { return authReply({error:"Could not create this account. Try another username."},409); }
         const token=await issueSession(env.DB,id);
-        return authReply({ok:true,user:{username,role:isOwner?"owner":"user"}},201,token);
+        return authReply({ok:true,user:{username,role:assignedRole}},201,token);
       }
       if (requestedAction==="auth-login") {
         const row=await env.DB.prepare("SELECT id,username,password_hash,password_salt,password_iterations,role FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
