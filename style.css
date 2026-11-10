@@ -451,3 +451,16 @@ body.studio-open,body.workspace-open,body.action-open{overflow:hidden}
 
 /* Response mode picker */
 .mode-picker-wrap{position:relative;display:inline-flex;align-items:center}.mode-picker{display:flex;align-items:center;gap:8px;cursor:pointer;font:inherit}.mode-picker>i{flex:none}.mode-picker>span:last-child{font-size:15px;color:var(--muted)}.mode-menu{position:absolute;right:0;top:calc(100% + 9px);z-index:90;width:min(290px,calc(100vw - 32px));padding:8px;border:1px solid var(--line);border-radius:15px;background:var(--panel);box-shadow:0 18px 45px var(--shadow)}.mode-menu[hidden]{display:none}.mode-option{display:flex;width:100%;flex-direction:column;align-items:flex-start;gap:4px;padding:11px 12px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text);text-align:left;cursor:pointer}.mode-option b{font-size:13px}.mode-option small,.mode-menu-note{font-size:10px;color:var(--muted)}.mode-option.active{border-color:#ff9a4544;background:rgba(255,145,55,.10)}.mode-menu-note{margin:7px 10px 5px;line-height:1.45}@media(max-width:700px){.top-right{gap:5px}.mode-picker{padding:7px 8px;font-size:10px}.mode-menu{right:-4px}}
+
+
+/* ORIVANE collapsible desktop navigation */
+@media(min-width:801px){
+  .menu-button{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border:1px solid var(--line);border-radius:10px;color:var(--text);background:rgba(255,255,255,.035);font-size:17px}
+  .menu-button:hover{border-color:rgba(255,138,50,.45);background:rgba(255,138,50,.08)}
+  .sidebar{transition:transform .24s ease}
+  .main{transition:margin-left .24s ease}
+  body.sidebar-collapsed .sidebar{transform:translateX(-100%)}
+  body.sidebar-collapsed .main{margin-left:0}
+  body.sidebar-collapsed .menu-button{color:var(--accent)}
+}
+@media(max-width:800px){.sidebar{transition:transform .22s ease}}
