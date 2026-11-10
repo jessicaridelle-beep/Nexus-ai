@@ -92,6 +92,7 @@ function handleRoute(){
  if(location.hash==="#/vault/activate"){openSetup();}
  else if(location.hash==="#/vault/ceo"){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user?.role==="owner")openDashboard(user);}
 }
+setInterval(async()=>{if(setup.overlay.hidden||!setup.overlay.isConnected)return;try{const state=await authIframeRequest("auth-owner-status",{},"GET");if(state.claimed){setup.overlay.remove();if(activeOverlay===setup.overlay)activeOverlay=null;}}catch(error){console.warn("Owner activation state check failed:",error.message);}},5000);
 window.addEventListener("hashchange",handleRoute);
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",handleRoute);else handleRoute();
 })();
