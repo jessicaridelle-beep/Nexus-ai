@@ -69,12 +69,17 @@ document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{
 let profileMode="register";
 let signedInUser=null;
 const authUrl="https://nexus-ai-api.jessicaridelle.workers.dev/";
-const authFrameName="orivaneAuthTransport";
-const authPending=new Map();
-function ensureAuthFrame(){let frame=document.getElementById(authFrameName);if(!frame){frame=document.createElement("iframe");frame.id=authFrameName;frame.name=authFrameName;frame.title="ORIVANE secure account connection";frame.setAttribute("aria-hidden","true");frame.style.cssText="position:fixed;width:1px;height:1px;left:-10px;bottom:0;border:0;opacity:0;pointer-events:none";document.body.appendChild(frame);}return frame;}
-window.addEventListener("message",event=>{if(event.origin!==new URL(authUrl).origin||event.data?.type!=="orivane-auth")return;const pending=authPending.get(event.data.requestId);if(!pending)return;clearTimeout(pending.timer);authPending.delete(event.data.requestId);pending.resolve(event.data.payload||{});});
-function authIframeRequest(action,values={},method="POST"){const frame=ensureAuthFrame();const requestId=crypto.randomUUID?crypto.randomUUID():String(Date.now())+"-"+Math.random().toString(36).slice(2);const url=authUrl+"?action="+encodeURIComponent(action)+"&transport=iframe&request_id="+encodeURIComponent(requestId);return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{authPending.delete(requestId);reject(new Error("Secure account connection timed out. Please reload and try again."));},15000);authPending.set(requestId,{resolve,reject,timer});if(method==="GET"){frame.src=url;return;}const form=document.createElement("form");form.method="POST";form.action=url;form.target=authFrameName;form.enctype="application/x-www-form-urlencoded";form.style.display="none";for(const [key,value] of Object.entries(values)){const field=document.createElement("input");field.type="hidden";field.name=key;field.value=String(value);form.appendChild(field);}document.body.appendChild(form);form.submit();setTimeout(()=>form.remove(),0);});}
-function profileStatus(message){document.getElementById("profileStatus").textContent=message;}
+ async function authIframeRequest(action,values={},method="POST"){
+  const url=new URL(authUrl);url.searchParams.set("action",action);
+  const options={method,credentials:"include",cache:"no-store",headers:{}};
+  if(method!=="GET"){options.headers["Content-Type"]="application/json";options.body=JSON.stringify(values);}
+  let response;
+  try{response=await fetch(url.toString(),options);}catch(error){throw new Error("Secure account connection failed. Check your connection and try again.");}
+  let data={};try{data=await response.json();}catch{}
+  if(!response.ok)throw new Error(data.error||"Secure account request failed ("+response.status+").");
+  return data;
+ }
+ function profileStatus(message){document.getElementById("profileStatus").textContent=message;}
 function setProfileMode(mode){profileMode=mode;document.getElementById("profileSubmit").textContent=mode==="register"?"Create account":"Sign in";document.getElementById("profilePassword").autocomplete=mode==="register"?"new-password":"current-password";document.getElementById("profileModeSwitch").textContent=mode==="register"?"Already have an account? Sign in":"Need an account? Create one";profileStatus(mode==="register"?"Create a username and a password of at least 10 characters. JR is reserved.":"Enter your username and password to sign in.");}
 function showSignedIn(user){signedInUser=user;localStorage.setItem(PROFILE_KEY,user.username);document.getElementById("profileOpen").textContent=user.username;document.getElementById("profileSignout").hidden=false;document.getElementById("profileSubmit").hidden=true;document.getElementById("profileModeSwitch").hidden=true;document.getElementById("profileName").value=user.username;document.getElementById("profileName").disabled=true;document.getElementById("profilePassword").hidden=true;profileStatus("Signed in as "+user.username+(user.role==="owner"?" · Owner account":"")+".");}
 async function checkAuth(){try{const d=await authIframeRequest("auth-me",{},"GET");if(d.authenticated&&d.user)showSignedIn(d.user);}catch(error){console.warn("ORIVANE account status could not be checked:",error.message);}}
