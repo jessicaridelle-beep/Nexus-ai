@@ -487,7 +487,7 @@ export default {
           const claimed=await env.DB.prepare("SELECT value FROM auth_meta WHERE key='jr_claimed'").first();
           if (claimed) return authReply({error:"The JR account has already been claimed."},409);
           if (username.toLowerCase()!=="jr") return authReply({error:"The protected owner username must be JR."},400);
-        } else if (username.toLowerCase()==="jr") return authReply({error:"JR is reserved for the protected owner account."},403);
+        } else if (username.toLowerCase()==="jr") return authReply({error:"That username is unavailable."},403);
         const existing=await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
         if (existing) return authReply({error:"That username is already taken."},409);
         const salt=toB64(crypto.getRandomValues(new Uint8Array(16)));
