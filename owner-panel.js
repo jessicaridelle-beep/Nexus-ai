@@ -1,108 +1,50 @@
-/* ORIVANE private owner activation + CEO command panel.
-   The one-time setup phrase is verified only by the Worker secret JR_SETUP_CODE.
-   This file intentionally contains no activation phrase or owner credential. */
+/* ORIVANE Admin Panel — read-only project controls and system status. */
 (()=>{
 "use strict";
 const API="https://nexus-ai-api.jessicaridelle.workers.dev/";
 const $=id=>document.getElementById(id);
-let activeOverlay=null;
-function makeOverlay(id,kind,title,subtitle){
- const overlay=document.createElement("div");overlay.className="owner-overlay";overlay.id=id;overlay.hidden=true;
- const card=document.createElement("section");card.className="owner-card "+(kind||"");card.setAttribute("role","dialog");card.setAttribute("aria-modal","true");
- const close=document.createElement("button");close.className="owner-close";close.type="button";close.textContent="×";close.setAttribute("aria-label","Close");
- close.addEventListener("click",()=>closeOverlay());
- const kicker=document.createElement("div");kicker.className="owner-kicker";kicker.textContent="ORIVANE · PRIVATE ACCESS";
- const h=document.createElement("h2");h.className="owner-title";h.textContent=title;
- const p=document.createElement("p");p.className="owner-sub";p.textContent=subtitle;
- card.append(close,kicker,h,p);overlay.append(card);overlay.addEventListener("click",e=>{if(e.target===overlay)closeOverlay();});document.body.append(overlay);
- return {overlay,card};
+let overlay=null;
+function openPanel(){
+ if(overlay){overlay.hidden=false;refresh();return;}
+ overlay=document.createElement("div");overlay.className="owner-overlay";overlay.id="orivaneAdminPanel";
+ const card=document.createElement("section");card.className="owner-card";card.setAttribute("role","dialog");card.setAttribute("aria-modal","true");
+ const close=document.createElement("button");close.className="owner-close";close.type="button";close.textContent="×";close.setAttribute("aria-label","Close");close.addEventListener("click",()=>overlay.hidden=true);
+ const kicker=document.createElement("div");kicker.className="owner-kicker";kicker.textContent="ORIVANE · ADMIN";
+ const title=document.createElement("h2");title.className="owner-title";title.textContent="Admin Command Center";
+ const sub=document.createElement("p");sub.className="owner-sub";sub.textContent="Project overview · System status · Quick access";
+ const header=document.createElement("div");header.className="owner-head";header.append(kicker,title,sub,close);card.append(header);
+ const grid=document.createElement("div");grid.className="owner-grid";
+ function tile(label,value,detail){const el=document.createElement("article");el.className="owner-tile";const small=document.createElement("small"),strong=document.createElement("strong"),p=document.createElement("p");small.textContent=label;strong.textContent=value;p.textContent=detail;el.append(small,strong,p);grid.append(el);return {value:strong,detail:p};}
+ const api=tile("API STATUS","Checking…","Cloudflare Worker");
+ const ai=tile("AI MODELS","Loading…","Fast · Thinking · Pro");
+ const build=tile("BUILD VERSION","—","ORIVANE application build");
+ const features=tile("WORKSPACE","Available","Chat · Canvas · GIF Studio · Projects");
+ card.append(grid);
+ const actions=document.createElement("div");actions.className="owner-actions";
+ const refreshButton=document.createElement("button");refreshButton.type="button";refreshButton.textContent="↻ Refresh status";refreshButton.addEventListener("click",refresh);
+ const repo=document.createElement("a");repo.href="https://github.com/jessicaridelle-beep/Nexus-ai";repo.target="_blank";repo.rel="noopener noreferrer";repo.textContent="Open GitHub repository ↗";
+ const site=document.createElement("a");site.href="https://jessicaridelle-beep.github.io/Nexus-ai/";site.target="_blank";site.rel="noopener noreferrer";site.textContent="Open live website ↗";
+ actions.append(refreshButton,repo,site);card.append(actions);
+ const note=document.createElement("p");note.className="owner-foot";note.textContent="This version provides project visibility and quick links. Sensitive account, billing, deployment, and database controls are not exposed in this public panel.";card.append(note);
+ overlay.append(card);overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.hidden=true;});document.body.append(overlay);
+ async function refresh(){
+  api.value.textContent="Checking…";ai.value.textContent="Loading…";
+  try{
+   const [hr,ir]=await Promise.all([fetch(API+"?action=health",{cache:"no-store"}),fetch(API+"?action=site-info",{cache:"no-store"})]);
+   if(!hr.ok||!ir.ok)throw new Error("Status endpoint unavailable");
+   const health=await hr.json(),info=await ir.json(),models=info.modelsByMode||{};
+   api.value.textContent=health.services?.aiChat?"Online":"Degraded";
+   api.detail.textContent="Secure auth: "+(health.services?.secureAuth?"available":"not ready")+" · AI chat: "+(health.services?.aiChat?"available":"unavailable");
+   ai.value.textContent="3 configured";
+   ai.detail.textContent="Fast: "+(models.fast||"—")+" · Thinking: "+(models.thinking||"—")+" · Pro: "+(models.pro||"—");
+   build.value.textContent=info.version||"Unknown";
+  }catch(error){api.value.textContent="Unavailable";api.detail.textContent="Could not retrieve live system status.";ai.value.textContent="Unavailable";build.value.textContent="—";}
+ }
+ refresh();
 }
-function closeOverlay(){if(activeOverlay){activeOverlay.hidden=true;activeOverlay=null;}}
-function showOverlay(overlay){if(activeOverlay)activeOverlay.hidden=true;activeOverlay=overlay;overlay.hidden=false;}
-const setup=makeOverlay("orivaneOwnerSetup","setup","Activate owner access","One-time founder verification. This creates the protected JR owner account; the activation phrase is never saved in this browser.");
-const setupForm=document.createElement("form");setupForm.className="owner-form";
-function field(labelText,type,placeholder,autocomplete){const wrap=document.createElement("div"),label=document.createElement("label"),input=document.createElement("input");label.textContent=labelText;input.type=type;input.placeholder=placeholder;input.autocomplete=autocomplete;input.required=true;wrap.append(label,input);setupForm.append(wrap);return input;}
-const phrase=field("ONE-TIME ACTIVATION PHRASE","password","Enter your private activation phrase","off");phrase.minLength=16;phrase.maxLength=256;
-const password=field("CREATE YOUR OWNER PASSWORD","password","At least 10 characters","new-password");password.minLength=10;password.maxLength=128;
-const confirm=field("CONFIRM OWNER PASSWORD","password","Enter it again","new-password");confirm.minLength=10;confirm.maxLength=128;
-const warning=document.createElement("div");warning.className="owner-warning";warning.textContent="The activation phrase is checked by ORIVANE's server and can only be used once. Choose a separate owner password for future sign-ins.";
-const status=document.createElement("div");status.className="owner-status";status.setAttribute("role","status");
-const submit=document.createElement("button");submit.className="owner-primary";submit.type="submit";submit.textContent="Verify and activate CEO access";
-setupForm.append(warning,submit,status);setup.card.append(setupForm);
-setupForm.addEventListener("submit",async e=>{
- e.preventDefault();if(password.value!==confirm.value){status.className="owner-status error";status.textContent="The passwords do not match.";return;}
- submit.disabled=true;status.className="owner-status";status.textContent="Verifying with the secure backend…";
- try{
-  const result=await authIframeRequest("auth-owner-claim",{username:"JR",password:password.value,setupCode:phrase.value});
-  if(!result.ok||!result.user)throw new Error(result.error||"Owner activation failed.");
-  phrase.value="";password.value="";confirm.value="";
-  if(typeof showSignedIn==="function")showSignedIn(result.user);
-  status.className="owner-status success";status.textContent="Owner account activated. The one-time phrase has been consumed.";
-  setTimeout(()=>{closeOverlay();openDashboard(result.user);},700);
- }catch(error){status.className="owner-status error";status.textContent=error.message||"Activation failed. Try again later.";}
- finally{submit.disabled=false;}
-});
-const dash=makeOverlay("orivaneCeoPanel","","CEO Command Center","Private owner workspace · Controls are available only to the authenticated owner account.");
-const header=document.createElement("div");header.className="owner-head";
-const heading=document.createElement("div");heading.append(dash.card.querySelector(".owner-kicker"),dash.card.querySelector(".owner-title"),dash.card.querySelector(".owner-sub"));
-const chip=document.createElement("span");chip.className="owner-chip";chip.textContent="✦ OWNER VERIFIED";header.append(heading,chip);
-const grid=document.createElement("div");grid.className="owner-grid";
-function tile(label,value,detail){const el=document.createElement("article");el.className="owner-tile";const small=document.createElement("small"),strong=document.createElement("strong"),p=document.createElement("p");small.textContent=label;strong.textContent=value;p.textContent=detail;el.append(small,strong,p);grid.append(el);return strong;}
-const apiValue=tile("API STATUS","Checking…","Secure Worker health endpoint");
-const modelValue=tile("ACTIVE MODELS","Loading…","Fast · Thinking · Pro model routing");
-const authValue=tile("OWNER ACCESS","Verified","Authenticated server-side owner role");
-const versionValue=tile("BUILD VERSION","—","Current ORIVANE application build");
-dash.card.append(header,grid);
-const actions=document.createElement("div");actions.className="owner-actions";
-const refresh=document.createElement("button");refresh.type="button";refresh.textContent="↻ Refresh system status";
-refresh.addEventListener("click",loadStatus);
-const repo=document.createElement("a");repo.href="https://github.com/jessicaridelle-beep/Nexus-ai";repo.target="_blank";repo.rel="noopener noreferrer";repo.textContent="Open source repository ↗";
-const live=document.createElement("a");live.href="https://jessicaridelle-beep.github.io/Nexus-ai/";live.target="_blank";live.rel="noopener noreferrer";live.textContent="Open live ORIVANE ↗";
-const signout=document.createElement("button");signout.type="button";signout.textContent="Sign out";
-signout.addEventListener("click",async()=>{try{await authIframeRequest("auth-logout",{});location.reload();}catch(error){authValue.textContent="Sign-out error";}});
-actions.append(refresh,repo,live,signout);dash.card.append(actions);
-const foot=document.createElement("p");foot.className="owner-foot";foot.textContent="This first release is a protected owner dashboard for identity and system visibility. It does not yet expose live model editing, deployment, or database mutation controls.";dash.card.append(foot);
-async function loadStatus(){
- apiValue.textContent="Checking…";modelValue.textContent="Loading…";
- try{
-  const [healthResponse,infoResponse]=await Promise.all([fetch(API+"?action=health",{cache:"no-store"}),fetch(API+"?action=site-info",{cache:"no-store"})]);
-  if(!healthResponse.ok||!infoResponse.ok)throw new Error("The Worker status endpoints are unavailable.");
-  const health=await healthResponse.json(),info=await infoResponse.json();
-  apiValue.textContent="Online";modelValue.textContent="3 configured";versionValue.textContent=info.version||"Unknown";
-  const models=info.modelsByMode||{};grid.querySelectorAll(".owner-tile")[1].querySelector("p").textContent="Fast: "+(models.fast||"—")+" · Thinking: "+(models.thinking||"—")+" · Pro: "+(models.pro||"—");
-  grid.querySelectorAll(".owner-tile")[0].querySelector("p").textContent="Secure auth: "+(health.services?.secureAuth?"available":"not ready")+" · AI: "+(health.services?.aiChat?"available":"unavailable");
- }catch(error){apiValue.textContent="Unavailable";modelValue.textContent="Status unavailable";versionValue.textContent="—";}
+const profile=$("profileOpen");
+if(profile&&!$("adminPanelOpen")){
+ const button=document.createElement("button");button.type="button";button.id="adminPanelOpen";button.className="header-action";button.textContent="♛ Admin Panel";button.addEventListener("click",openPanel);profile.after(button);
 }
-function openDashboard(user){
- if(!user||user.role!=="owner"){closeOverlay();return;}
- showOverlay(dash.overlay);loadStatus();
-}
-async function openSetup(){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user&&user.role==="owner"){openDashboard(user);return;}try{const state=await authIframeRequest("auth-owner-status",{},"GET");if(state.claimed){setup.overlay.remove();return;}showOverlay(setup.overlay);}catch(error){showOverlay(setup.overlay);status.className="owner-status error";status.textContent="Could not verify activation status. Check the secure connection and try again.";console.warn("Owner activation status unavailable:",error.message);}}
-function syncOwnerEntry(){
- const user=typeof signedInUser!=="undefined"?signedInUser:null;
- let button=$("profileOpen");
- if(user&&user.role==="owner"){
-  if(! $("ownerPanelOpen")){button=document.createElement("button");button.type="button";button.id="ownerPanelOpen";button.className="header-action";button.textContent="♛ CEO Panel";$("profileOpen")?.after(button);button.addEventListener("click",()=>openDashboard(user));}
- }else{$("ownerPanelOpen")?.remove();}
-}
-const profileButton=$("profileOpen");
-if(profileButton){
- const activationButton=document.createElement("button");
- activationButton.type="button";activationButton.id="ownerActivateOpen";activationButton.className="header-action";
- activationButton.textContent="♛ Founder activation";
- activationButton.title="Open the private one-time owner activation page";
- activationButton.addEventListener("click",()=>{location.hash="/vault/activate";});
- profileButton.after(activationButton);
- const checkActivationAvailability=async()=>{try{const state=await authIframeRequest("auth-owner-status",{},"GET");if(state.claimed){activationButton.remove();setup.overlay.remove();if(activeOverlay===setup.overlay)activeOverlay=null;}else if(!activationButton.isConnected){profileButton.after(activationButton);}}catch(error){console.warn("Founder activation status check failed:",error.message);}};
- checkActivationAvailability();setInterval(checkActivationAvailability,10000);
- new MutationObserver(syncOwnerEntry).observe(profileButton,{childList:true,characterData:true,subtree:true});
-}
-setInterval(syncOwnerEntry,1500);
-function handleRoute(){
- if(location.hash==="#/vault/activate"){openSetup();}
- else if(location.hash==="#/vault/ceo"){const user=typeof signedInUser!=="undefined"?signedInUser:null;if(user?.role==="owner")openDashboard(user);}
-}
-setInterval(async()=>{if(setup.overlay.hidden||!setup.overlay.isConnected)return;try{const state=await authIframeRequest("auth-owner-status",{},"GET");if(state.claimed){setup.overlay.remove();if(activeOverlay===setup.overlay)activeOverlay=null;}}catch(error){console.warn("Owner activation state check failed:",error.message);}},5000);
-window.addEventListener("hashchange",handleRoute);
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",handleRoute);else handleRoute();
+window.ORIVANE_ADMIN_PANEL={open:openPanel};
 })();
