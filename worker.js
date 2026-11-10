@@ -46,7 +46,7 @@ async function readPublicProjectFile(path) {
       headers: { "Accept": "text/plain" }
     });
     if (!response.ok) return null;
-    return (await response.text()).slice(0, 9000);
+    return (await response.text()).slice(0, 18000);
   } catch { return null; }
 }
 
