@@ -22,9 +22,9 @@ function extractModelText(result) {
     if (Array.isArray(value)) return value.flatMap(item => collect(item, depth + 1));
     if (typeof value !== "object") return [];
     if (value.type === "reasoning" || value.type === "summary_text") return [];
+    if (typeof value.text === "string" && value.text.trim()) return [value.text];
+    if (typeof value.content === "string" && value.content.trim()) return [value.content];
     const output = [];
-    if (typeof value.text === "string" && value.text.trim()) output.push(value.text);
-    if (typeof value.content === "string" && value.content.trim()) output.push(value.content);
     for (const key of ["output", "choices", "message", "content", "messages", "parts"]) {
       if (value[key] != null) output.push(...collect(value[key], depth + 1));
     }
