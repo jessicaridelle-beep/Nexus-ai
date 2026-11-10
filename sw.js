@@ -1,4 +1,4 @@
-const VERSION = "orivane-shell-v14";
+const VERSION = "orivane-shell-v15";
 const BASE = new URL("./", self.location.href);
 const SHELL = [
   new URL("./", BASE).href,
