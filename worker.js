@@ -223,7 +223,14 @@ async function currentUser(request,db) {
  const token=readCookie(request,AUTH_COOKIE); if(!token) return null;
  const hash=await digest(token), now=Math.floor(Date.now()/1000);
  const row=await db.prepare("SELECT u.id,u.username,u.role FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?").bind(hash,now).first();
- return row||null;
+ if (!row) return null;
+ // The authenticated, reserved Ceo account is ORIVANE's owner account.
+ // Registration below prevents anyone from creating a new Ceo account.
+ if (String(row.username).toLowerCase() === "ceo" && row.role !== "owner") {
+  await db.prepare("UPDATE users SET role='owner' WHERE id=? AND username=? COLLATE NOCASE").bind(row.id,"Ceo").run();
+  row.role = "owner";
+ }
+ return row;
 }
 
 
@@ -487,7 +494,7 @@ export default {
           const claimed=await env.DB.prepare("SELECT value FROM auth_meta WHERE key='jr_claimed'").first();
           if (claimed) return authReply({error:"The JR account has already been claimed."},409);
           if (username.toLowerCase()!=="jr") return authReply({error:"The protected owner username must be JR."},400);
-        } else if (username.toLowerCase()==="jr") return authReply({error:"That username is unavailable."},403);
+        } else if (["jr","ceo"].includes(username.toLowerCase())) return authReply({error:"That username is reserved."},403);
         const existing=await env.DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
         if (existing) return authReply({error:"That username is already taken."},409);
         const salt=toB64(crypto.getRandomValues(new Uint8Array(16)));
