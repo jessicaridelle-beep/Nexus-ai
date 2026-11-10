@@ -43,12 +43,11 @@ async function getOrivaneProjectContext(question) {
     "Repository: https://github.com/" + PROJECT_REPO,
     "Runtime model configured in Worker: " + MODEL,
     "Response-mode model routing: Fast, Thinking and Pro can each override the default through ORIVANE_MODEL_FAST, ORIVANE_MODEL_THINKING and ORIVANE_MODEL_PRO Worker variables; modes fall back to the default when an override is unset.",
-    "Fast, Thinking and Pro can use separate ORIVANE_MODEL_FAST, ORIVANE_MODEL_THINKING and ORIVANE_MODEL_PRO Worker variables. Each mode currently falls back to the default model if its override is not configured.",
     "Application build version: " + ORIVANE_VERSION + ". This is separate from the configured model version.",
     "Conversation context: you receive only the messages included in the current API request (the website currently sends up to 12 recent messages). The browser can optionally save up to 30 recent messages locally when the user enables Memory; this is device-local, not cloud-synced.",
-    "Current capabilities: AI chat; optional live web search; public HTTPS page reading when the user supplies a URL; local conversation memory; image generation through the configured image model; GIF search and GIF generation; project/workspace tools; and sandboxed ORIVANE Canvas HTML previews when requested.",
-    "Limitations: website reading is a one-page text fetch, not a full interactive browser; Canvas previews run in a sandbox and cannot call APIs or access the host page; chat can generate code but this Worker does not automatically commit or deploy website changes. Do not claim tools or actions that were not actually used.",
-    "The source files below are public project code, not private credentials. Use them as the source of truth for questions about your website and implementation."
+    "Current capabilities: AI chat; optional live web search; public HTTPS page reading when the user supplies a URL; local conversation memory; image generation through the configured image model; GIF search and GIF generation; project/workspace tools; a step-by-step AI task planner; and sandboxed ORIVANE Canvas HTML previews when requested.",
+    "Limitations: website reading is a one-page text fetch, not a full interactive browser; Canvas previews run in a sandbox and cannot call APIs or access the host page; Action Studio produces model-generated task steps and does not independently operate a browser, run arbitrary code or commit files; chat can generate code but this Worker does not automatically commit or deploy website changes. Do not claim tools or actions that were not actually used.",
+    "The source files below are public project code, not private credentials. Use them as the source of truth for questions about your website and implementation.",
     files.join("\n\n")
   ].join("\n");
 }
