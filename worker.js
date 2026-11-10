@@ -365,7 +365,7 @@ export default {
       if (origin !== SITE_ORIGIN) return json({error:"This website is not allowed to change shared AI settings."},403);
       if (!env.DB) return json({error:"Shared settings storage is unavailable."},503);
       const user = await currentUser(request, env.DB);
-      if (!user || user.role !== "owner") return json({error:"Only the authenticated JR owner account can access global AI settings."},403);
+      if (!user || user.role !== "owner") return json({error:"Only the authenticated owner account can access global AI settings."},403);
       try {
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS orivane_global_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL)").run();
         if (request.method === "GET") {
@@ -408,6 +408,22 @@ export default {
         return new Response(html, { status, headers: responseHeaders });
       };
 
+      if (requestedAction === "auth-owner-claim") {
+        if (request.method !== "POST") return authReply({error:"Use POST to activate owner access."},405);
+        if (origin !== SITE_ORIGIN) return authReply({error:"This website is not allowed to activate owner access."},403);
+        if (!env.DB) return authReply({error:"Authentication storage is not connected."},503);
+        const user = await currentUser(request, env.DB);
+        if (!user || String(user.username).toLowerCase() !== "ceo") return authReply({error:"Sign in with the Ceo account to activate owner access."},403);
+        let payload = {};
+        try { payload = await request.json(); } catch { return authReply({error:"Enter the owner setup code."},400); }
+        if (!env.JR_SETUP_CODE || payload.setupCode !== env.JR_SETUP_CODE) return authReply({error:"The owner setup code is invalid."},403);
+        const existingOwner = await env.DB.prepare("SELECT username FROM users WHERE role='owner' LIMIT 1").first();
+        if (existingOwner) return authReply({error:"An owner account has already been activated. No changes were made."},409);
+        const result = await env.DB.prepare("UPDATE users SET role='owner' WHERE id=? AND username=? COLLATE NOCASE AND role='user'").bind(user.id,"Ceo").run();
+        if (!result || !result.meta || result.meta.changes !== 1) return authReply({error:"The Ceo account could not be promoted. Check that it exists and is not already an owner."},409);
+        await env.DB.prepare("INSERT INTO auth_meta(key,value) VALUES('owner_claimed','Ceo') ON CONFLICT(key) DO UPDATE SET value=excluded.value").run();
+        return authReply({ok:true,user:{username:"Ceo",role:"owner"},message:"Owner access activated for Ceo."});
+      }
       if (!env.DB) return authReply({error:"Authentication storage is not connected."},503);
       if (iframeTransport && request.method === "POST" && origin !== SITE_ORIGIN) return authReply({error:"This website is not allowed to submit account changes."},403);
 
@@ -417,8 +433,8 @@ export default {
         return authReply({authenticated:!!user,user:user?{username:user.username,role:user.role}:null});
       }
       if (request.method === "GET" && requestedAction === "auth-owner-status") {
-        const claimed = await env.DB.prepare("SELECT value FROM auth_meta WHERE key=?").bind("jr_claimed").first();
-        return authReply({ claimed: !!claimed, activationAvailable: !claimed });
+        const owner = await env.DB.prepare("SELECT username FROM users WHERE role='owner' LIMIT 1").first();
+        return authReply({ claimed: !!owner, ownerUsername: owner?.username || null, activationAvailable: !owner });
       }
       if (request.method === "GET" && requestedAction === "early-access-status") {
         const user=await currentUser(request,env.DB);
@@ -528,6 +544,8 @@ export default {
       });
       if (action === "visitor-stats") {
         if (!env.DB) return json({ error: "Visitor analytics are unavailable." }, 503);
+        const statsUser = await currentUser(request, env.DB);
+        if (!statsUser || statsUser.role !== "owner") return json({ error: "Owner access is required to view visitor analytics." }, 403);
         const now = Math.floor(Date.now() / 1000);
         try {
           await env.DB.prepare("CREATE TABLE IF NOT EXISTS visitor_presence (visitor_id TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, page_views INTEGER NOT NULL DEFAULT 1)").run();
