@@ -556,7 +556,7 @@ export default {
             { role: "system", content: "You are the task planner for ORIVANE Action Studio. Convert the user's goal into 2 to 6 small, ordered, executable steps. Return ONLY valid JSON in this exact shape: {\"steps\":[{\"title\":\"short title\",\"instruction\":\"specific instruction\"}]}. For simple tasks use 2 or 3 steps. Never plan to access accounts, spend money, publish, delete, send messages, or perform consequential external actions. Plan drafts and analysis only. No markdown fences." },
             { role: "user", content: task }
           ], max_tokens: 900, temperature: 0.2 });
-          const raw = planned && typeof planned.response === "string" ? planned.response.trim() : "";
+          const raw = extractModelText(planned);
           const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
           let parsed;
           try { parsed = JSON.parse(cleaned); } catch { throw new Error("The planner returned an invalid task plan. Please retry."); }
@@ -574,7 +574,7 @@ export default {
           { role:"system", content:"You are ORIVANE Action Studio's execution engine. Complete exactly the current step and return a useful concrete result. Use prior step results as context. Do not claim to edit files, browse, deploy, access accounts, or perform external actions. If the step requests a consequential action, prepare a safe draft or explain why approval/integration is required." },
           { role:"user", content:"Overall task:\n"+task+"\n\nCurrent step:\n"+instruction+"\n\nPrior completed work:\n"+(context||"None yet.") }
         ], max_tokens:1500, temperature:0.35 });
-        const result = completed && typeof completed.response === "string" ? completed.response.trim() : "";
+        const result = extractModelText(completed);
         if (!result) throw new Error("The AI returned an empty result for this step.");
         return json({ result });
       } catch(error) { return json({ error:error&&error.message?error.message:"The task step failed." },502); }
@@ -596,7 +596,7 @@ export default {
           max_tokens: 1400,
           temperature: 0.35
         });
-        const output = result && typeof result.response === "string" ? result.response.trim() : "";
+        const output = extractModelText(result);
         if (!output) return json({ error: "The AI did not return a task result." }, 502);
         return json({ result: output });
       } catch (error) {
