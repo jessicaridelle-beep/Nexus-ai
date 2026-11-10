@@ -103,6 +103,9 @@ async function installOwnerEntry(){
   const auth=await api("auth-me");
   const user=auth.authenticated?auth.user:null;
   const profile=$("profileOpen");
+  $("adminPanelOpen")?.remove();
+  $("ownerActivateOpen")?.remove();
+  delete window.ORIVANE_ADMIN_PANEL;
   if(!profile||!user)return;
   if(user.role==="owner"){
    if(!$("adminPanelOpen")){
@@ -131,5 +134,6 @@ async function installOwnerEntry(){
  }catch(error){console.warn("ORIVANE owner controls are unavailable:",error.message)}
 }
 installOwnerEntry();
+window.addEventListener("orivane-auth-updated",installOwnerEntry);
 heartbeat();setInterval(heartbeat,30000);
 })();
