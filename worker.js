@@ -360,6 +360,7 @@ export default {
     }
 
     if (requestedAction === "global-ai-settings") {
+      if (origin !== SITE_ORIGIN) return json({error:"This website is not allowed to change shared AI settings."},403);
       if (!env.DB) return json({error:"Shared settings storage is unavailable."},503);
       const user = await currentUser(request, env.DB);
       if (!user || user.role !== "owner") return json({error:"Only the authenticated JR owner account can access global AI settings."},403);
