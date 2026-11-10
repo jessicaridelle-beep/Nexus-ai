@@ -3,13 +3,14 @@ const form=document.getElementById("chatForm"),input=document.getElementById("pr
 const MEMORY_KEY="orivane-memory-v1",MEMORY_FLAG="orivane-memory-enabled";
 const conversation=[];
 let memoryEnabled=localStorage.getItem(MEMORY_FLAG)==="true";
-let researchEnabled=false,studyEnabled=false;
+let researchEnabled=(function(){try{return JSON.parse(localStorage.getItem("orivane-personal-admin-v1")||"{}").research===true}catch{return false}})(),studyEnabled=false;
 let attachedContext="";
 const MODE_KEY="orivane-response-mode";
 let responseMode=localStorage.getItem(MODE_KEY)||(function(){try{return JSON.parse(localStorage.getItem("orivane-personal-admin-v1")||"{}").defaultMode||"fast"}catch{return "fast"}})();
 const modePicker=document.getElementById("modePicker"),modeMenu=document.getElementById("modeMenu"),modePickerLabel=document.getElementById("modePickerLabel");
 const modeNames={fast:"Fast",thinking:"Thinking",pro:"Pro"};
 function setResponseMode(mode){if(!modeNames[mode])return;responseMode=mode;localStorage.setItem(MODE_KEY,mode);modePickerLabel.textContent=modeNames[mode];modeMenu.hidden=true;modePicker.setAttribute("aria-expanded","false");document.querySelectorAll(".mode-option").forEach(option=>{const active=option.dataset.mode===mode;option.classList.toggle("active",active);option.setAttribute("aria-selected",String(active));});}
+window.addEventListener("orivane-admin-settings-updated",()=>{try{const c=JSON.parse(localStorage.getItem("orivane-personal-admin-v1")||"{}");if(modeNames[c.defaultMode])setResponseMode(c.defaultMode);researchEnabled=c.research===true;if(researchButton)setMode(researchButton,researchEnabled,"⌕ Research");}catch{}});
 modePicker?.addEventListener("click",()=>{modeMenu.hidden=!modeMenu.hidden;modePicker.setAttribute("aria-expanded",String(!modeMenu.hidden));});
 modeMenu?.querySelectorAll("[data-mode]").forEach(option=>option.addEventListener("click",()=>setResponseMode(option.dataset.mode)));
 document.addEventListener("click",event=>{if(!event.target.closest(".mode-picker-wrap")&&modeMenu&&!modeMenu.hidden){modeMenu.hidden=true;modePicker.setAttribute("aria-expanded","false");}});
