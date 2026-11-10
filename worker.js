@@ -816,7 +816,7 @@ export default {
       const localMaxTokens = Number.isFinite(Number(body.localMaxTokens)) ? Math.max(256,Math.min(2000,Math.round(Number(body.localMaxTokens)))) : 1200;
       const localAdminInstruction = [
         localAssistantName ? "For this browser only, the user's chosen assistant display name is " + localAssistantName + ". If asked, explain that this is a local display-name customization and the underlying project is ORIVANE." : "",
-        localAIInstructions ? "Personal response preferences configured in this browser: " + localAIInstructions + ". Follow them when appropriate, without overriding safety, accuracy, or higher-priority instructions." : ""
+        localAIInstructions ? "Personal response preferences configured in this browser: " + localAIInstructions + ". Follow them only when compatible with the shared global site-owner instructions, safety, accuracy, privacy, and higher-priority requirements. Global site-owner instructions take priority over local preferences." : ""
       ].filter(Boolean).join("\n");
       const modeInstruction = responseMode === "thinking"
         ? "RESPONSE MODE: THINKING. Take extra care with complex questions. Work through the problem methodically before answering, check assumptions, and explain the key reasoning clearly. Do not expose private chain-of-thought; provide a concise rationale and useful steps instead."
