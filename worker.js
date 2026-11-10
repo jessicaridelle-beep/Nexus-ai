@@ -21,7 +21,8 @@ async function readPublicProjectFile(path) {
 async function getOrivaneProjectContext(question) {
   const q = String(question || "").toLowerCase();
   const wantsCode = /\b(code|source|script|html|css|javascript|worker|backend|frontend|file|function|implementation|bug|error|fix|website|site|version|build|release|how.*work|what.*built|canvas|interface|dashboard)\b|\b(mon code|mon site|mon site web|version|fichier|code source|fonctionnement|corrige|bug)\b/i.test(q);
-  const wantsSelf = /\b(who are you|what are you|what can you do|tell me about yourself|yourself|your website|your site|your version|your model|your features|your memory|your chat|your code|your repository|orivane)\b/i.test(q);\n  if (!wantsCode && !wantsSelf) return "";
+  const wantsSelf = /\b(who are you|what are you|what can you do|tell me about yourself|yourself|your website|your site|your version|your model|your features|your memory|your chat|your code|your repository|orivane)\b/i.test(q);
+  if (!wantsCode && !wantsSelf) return "";
   const selected = new Set(["index.html"]);
   if (/\b(worker|backend|api|server|model|search|ai|version|deployment)\b/i.test(q)) selected.add("worker.js");
   if (/\b(script|javascript|frontend|chat|message|memory|browser)\b/i.test(q)) selected.add("script.js");
