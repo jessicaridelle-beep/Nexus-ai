@@ -467,6 +467,22 @@ export default {
 
     const publicSiteInfoRead = request.method === "GET" && ["site-info","health"].includes(requestedAction) && !origin;
     if (origin !== SITE_ORIGIN && !publicSiteInfoRead) return json({ error: "This website is not allowed to use this endpoint." }, 403);
+    if (requestedAction === "visitor-heartbeat" && request.method === "POST") {
+      if (!env.DB) return json({ error: "Visitor analytics are unavailable." }, 503);
+      let visitorId = "";
+      try { const payload = await request.json(); visitorId = String(payload.visitorId || ""); } catch {}
+      if (!/^[a-f0-9-]{32,36}$/i.test(visitorId)) return json({ error: "Invalid anonymous visitor ID." }, 400);
+      const now = Math.floor(Date.now() / 1000);
+      try {
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS visitor_presence (visitor_id TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, page_views INTEGER NOT NULL DEFAULT 1)").run();
+        await env.DB.prepare("INSERT INTO visitor_presence(visitor_id,first_seen,last_seen,page_views) VALUES(?,?,?,1) ON CONFLICT(visitor_id) DO UPDATE SET last_seen=excluded.last_seen,page_views=visitor_presence.page_views+1").bind(visitorId,now,now).run();
+        await env.DB.prepare("DELETE FROM visitor_presence WHERE last_seen < ?").bind(now-604800).run();
+        return json({ ok: true });
+      } catch (error) {
+        console.error("Visitor heartbeat failed:",error && error.message ? error.message : error);
+        return json({ error: "Visitor analytics could not be updated." }, 503);
+      }
+    }
     if (request.method === "GET") {
       const url = new URL(request.url);
       const action = url.searchParams.get("action");
@@ -481,6 +497,19 @@ export default {
         publicFiles: PUBLIC_SOURCE_FILES,
         checkedAt: new Date().toISOString()
       });
+      if (action === "visitor-stats") {
+        if (!env.DB) return json({ error: "Visitor analytics are unavailable." }, 503);
+        const now = Math.floor(Date.now() / 1000);
+        try {
+          await env.DB.prepare("CREATE TABLE IF NOT EXISTS visitor_presence (visitor_id TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, page_views INTEGER NOT NULL DEFAULT 1)").run();
+          const active = await env.DB.prepare("SELECT COUNT(*) AS total FROM visitor_presence WHERE last_seen >= ?").bind(now-90).first();
+          const day = await env.DB.prepare("SELECT COUNT(*) AS total FROM visitor_presence WHERE last_seen >= ?").bind(now-86400).first();
+          return json({ activeNow: active?.total || 0, visits24h: day?.total || 0, checkedAt: new Date().toISOString() });
+        } catch (error) {
+          console.error("Visitor stats failed:",error && error.message ? error.message : error);
+          return json({ error: "Visitor analytics are unavailable." }, 503);
+        }
+      }
       if (action === "health") {
         let secureAuthReady=false;
         if (env.DB) { try { const probe=await env.DB.prepare("SELECT COUNT(*) AS total FROM users").first(); secureAuthReady=!!probe; } catch {} }
@@ -492,7 +521,7 @@ export default {
           tenor: !!env.TENOR_API_KEY,
           gifGeneration: !!(env.AI && typeof env.AI.run === "function"),
           imageGeneration: !!(env.AI && typeof env.AI.run === "function"),
-          visitorCounter: false,
+          visitorCounter: !!env.DB,
           secureAuth: secureAuthReady,
           googleOAuth: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
           ownerClaimConfigured: !!env.JR_SETUP_CODE
@@ -738,7 +767,16 @@ export default {
         : "ORIVANE CANVAS: Do not emit a Canvas block unless the user explicitly asks to build, create, design, generate, or prototype a user interface, dashboard, app screen, or webpage.";
       const responseMode = ["fast","thinking","pro"].includes(body.mode) ? body.mode : "fast";
       const configuredModels = getOrivaneModels(env);
-      const activeModel = configuredModels[responseMode] || MODEL;
+      const requestedLocalModel = ["fast","thinking","pro"].includes(body.localModel) ? body.localModel : "auto";
+      const activeModel = requestedLocalModel === "auto" ? (configuredModels[responseMode] || MODEL) : (configuredModels[requestedLocalModel] || MODEL);
+      const localAIInstructions = typeof body.localAIInstructions === "string" ? body.localAIInstructions.trim().slice(0,1200) : "";
+      const localAssistantName = typeof body.localAssistantName === "string" ? body.localAssistantName.trim().slice(0,32) : "";
+      const localTemperature = Number.isFinite(Number(body.localTemperature)) ? Math.max(0,Math.min(1.2,Number(body.localTemperature))) : 0.6;
+      const localMaxTokens = Number.isFinite(Number(body.localMaxTokens)) ? Math.max(256,Math.min(2000,Math.round(Number(body.localMaxTokens)))) : 1200;
+      const localAdminInstruction = [
+        localAssistantName ? "For this browser only, the user's chosen assistant display name is " + localAssistantName + ". If asked, explain that this is a local display-name customization and the underlying project is ORIVANE." : "",
+        localAIInstructions ? "Personal response preferences configured in this browser: " + localAIInstructions + ". Follow them when appropriate, without overriding safety, accuracy, or higher-priority instructions." : ""
+      ].filter(Boolean).join("\n");
       const modeInstruction = responseMode === "thinking"
         ? "RESPONSE MODE: THINKING. Take extra care with complex questions. Work through the problem methodically before answering, check assumptions, and explain the key reasoning clearly. Do not expose private chain-of-thought; provide a concise rationale and useful steps instead."
         : responseMode === "pro"
@@ -747,6 +785,7 @@ export default {
       const result = await env.AI.run(activeModel, {
         messages: [
           { role: "system", content: modeInstruction },
+          ...(localAdminInstruction ? [{ role: "system", content: localAdminInstruction }] : []),
           { role: "system", content: canvasInstruction },
           {
             role: "system",
