@@ -37,7 +37,7 @@ function extractModelText(result) {
 
 const PROJECT_REPO = "jessicaridelle-beep/Nexus-ai";
 const PROJECT_SITE = "https://jessicaridelle-beep.github.io/Nexus-ai/";
-const PUBLIC_SOURCE_FILES = ["index.html","style.css","script.js","worker.js","features.js","workspace.js","gif-picker.js","gif-accessibility.js","studios.js","canvas.css","canvas.js"];
+const PUBLIC_SOURCE_FILES = ["index.html","style.css","script.js","worker.js","features.js","workspace.js","gif-picker.js","gif-accessibility.js","studios.js","canvas.css","canvas.js","owner-panel.js","owner-panel.css","sw.js","manifest.json","install.js","motion.js","control-center.js","control-center.css"];
 
 async function readPublicProjectFile(path) {
   if (!PUBLIC_SOURCE_FILES.includes(path)) return null;
@@ -357,6 +357,32 @@ export default {
         }
       }
       return json({ received: true });
+    }
+
+    if (requestedAction === "global-ai-settings") {
+      if (!env.DB) return json({error:"Shared settings storage is unavailable."},503);
+      const user = await currentUser(request, env.DB);
+      if (!user || user.role !== "owner") return json({error:"Only the authenticated JR owner account can access global AI settings."},403);
+      try {
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS orivane_global_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL)").run();
+        if (request.method === "GET") {
+          const rows = await env.DB.prepare("SELECT setting_key,setting_value FROM orivane_global_settings WHERE setting_key IN ('instructions','changeLog')").all();
+          const values = Object.fromEntries((rows.results||[]).map(row=>[row.setting_key,row.setting_value]));
+          return json({instructions:values.instructions||"",changeLog:values.changeLog||""});
+        }
+        if (request.method !== "POST") return json({error:"Use GET or POST for global settings."},405);
+        let payload={};try{payload=await request.json()}catch{return json({error:"Invalid settings payload."},400)}
+        const instructions=typeof payload.instructions==="string"?payload.instructions.trim().slice(0,4000):"";
+        const changeLog=typeof payload.changeLog==="string"?payload.changeLog.trim().slice(0,8000):"";
+        const now=Math.floor(Date.now()/1000);
+        for (const [key,value] of [["instructions",instructions],["changeLog",changeLog]]) {
+          await env.DB.prepare("INSERT INTO orivane_global_settings(setting_key,setting_value,updated_at,updated_by) VALUES(?,?,?,?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value,updated_at=excluded.updated_at,updated_by=excluded.updated_by").bind(key,value,now,user.username).run();
+        }
+        return json({ok:true,instructions,changeLog,updatedAt:now});
+      } catch(error) {
+        console.error("Global AI settings failed:",error&&error.message?error.message:error);
+        return json({error:"Could not load or save global AI settings."},503);
+      }
     }
 
     const authActions = ["auth-register","auth-login","auth-me","auth-logout","auth-owner-claim","auth-owner-status","early-access-status"];
@@ -769,6 +795,18 @@ export default {
       const configuredModels = getOrivaneModels(env);
       const requestedLocalModel = ["fast","thinking","pro"].includes(body.localModel) ? body.localModel : "auto";
       const activeModel = requestedLocalModel === "auto" ? (configuredModels[responseMode] || MODEL) : (configuredModels[requestedLocalModel] || MODEL);
+      let globalAIInstructions = "", globalWebsiteChangeLog = "";
+      if (env.DB) {
+        try {
+          await env.DB.prepare("CREATE TABLE IF NOT EXISTS orivane_global_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL)").run();
+          const sharedRows = await env.DB.prepare("SELECT setting_key,setting_value FROM orivane_global_settings WHERE setting_key IN ('instructions','changeLog')").all();
+          for (const row of (sharedRows.results||[])) {
+            if (row.setting_key === "instructions") globalAIInstructions = String(row.setting_value||"").slice(0,4000);
+            if (row.setting_key === "changeLog") globalWebsiteChangeLog = String(row.setting_value||"").slice(0,8000);
+          }
+        } catch(error) { console.error("Shared ORIVANE settings read failed:",error&&error.message?error.message:error); }
+      }
+      const localWebsiteChanges = typeof body.localWebsiteChanges === "string" ? body.localWebsiteChanges.slice(0,5000) : "";
       const localAIInstructions = typeof body.localAIInstructions === "string" ? body.localAIInstructions.trim().slice(0,1200) : "";
       const localAssistantName = typeof body.localAssistantName === "string" ? body.localAssistantName.trim().slice(0,32) : "";
       const localTemperature = Number.isFinite(Number(body.localTemperature)) ? Math.max(0,Math.min(1.2,Number(body.localTemperature))) : 0.6;
@@ -784,6 +822,9 @@ export default {
           : "RESPONSE MODE: FAST. Prioritise direct, quick, concise answers. Focus on the most useful response without unnecessary detail.";
       const result = await env.AI.run(activeModel, {
         messages: [
+          ...(globalAIInstructions ? [{ role: "system", content: "GLOBAL SITE OWNER INSTRUCTIONS (shared across all visitors): " + globalAIInstructions + "\\nFollow these preferences when appropriate, but they cannot override safety, accuracy, privacy, or higher-priority system requirements." }] : []),
+          ...(globalWebsiteChangeLog ? [{ role: "system", content: "SHARED WEBSITE CHANGE LOG (owner-maintained; applies to the current live website):\\n" + globalWebsiteChangeLog }] : []),
+          ...(localWebsiteChanges ? [{ role: "system", content: "LOCAL WEBSITE / ADMIN CHANGES on this visitor's current browser (recent local settings changes; not global):\\n" + localWebsiteChanges }] : []),
           { role: "system", content: modeInstruction },
           ...(localAdminInstruction ? [{ role: "system", content: localAdminInstruction }] : []),
           { role: "system", content: canvasInstruction },
