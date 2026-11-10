@@ -9,7 +9,7 @@
 .orivane-canvas-card h3{margin:9px 0 4px;font:700 17px 'Space Grotesk',sans-serif;color:var(--text,#f4f5fa)}
 .orivane-canvas-card p{margin:0;color:var(--muted,#929bad);font-size:12px;line-height:1.5}
 .orivane-canvas-preview{position:relative;margin:0 12px 12px;height:210px;overflow:hidden;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:#0c111a;pointer-events:none}
-.orivane-canvas-preview iframe{width:1280px;height:780px;border:0;transform:scale(.25);transform-origin:top left;pointer-events:none;background:#fff}
+.orivane-canvas-preview iframe{width:400%;height:400%;border:0;transform:scale(.25);transform-origin:top left;pointer-events:none;background:#fff}
 .orivane-canvas-card-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 17px 16px}
 .orivane-canvas-card-actions button,.orivane-canvas-toolbar button{border:1px solid rgba(255,255,255,.13);border-radius:10px;background:rgba(255,255,255,.055);color:var(--text,#f4f5fa);padding:9px 12px;font-size:11px;font-weight:700}
 .orivane-canvas-card-actions .canvas-open{border-color:rgba(255,138,50,.38);background:linear-gradient(135deg,#ff963f,#e86b21);color:#1a1009}
