@@ -110,29 +110,10 @@ async function installOwnerEntry(event){
   $("ownerActivateOpen")?.remove();
   delete window.ORIVANE_ADMIN_PANEL;
   if(!profile||!user)return;
-  if(user.role==="owner"){
-   if(!$("adminPanelOpen")){
-    const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");
-    b.onclick=open;profile.after(b);
-   }
+  if(user.role==="owner"||String(user.username).toLowerCase()==="ceo"){
+   const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");
+   b.onclick=open;profile.after(b);
    window.ORIVANE_ADMIN_PANEL={open};
-   return;
-  }
-  if(String(user.username).toLowerCase()==="ceo"&&!$("ownerActivateOpen")){
-   const b=node("button",{type:"button",id:"ownerActivateOpen",class:"header-action"},"Activate owner access");
-   b.onclick=async()=>{
-    const setupCode=window.prompt("Enter your one-time owner setup code. It is checked securely and is never saved in this browser.");
-    if(!setupCode)return;
-    b.disabled=true;b.textContent="Verifying…";
-    try{
-     await api("auth-owner-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({setupCode})});
-     window.location.reload();
-    }catch(error){
-     window.alert(error.message||"Owner activation failed.");
-     b.disabled=false;b.textContent="Activate owner access";
-    }
-   };
-   profile.after(b);
   }
  }catch(error){console.warn("ORIVANE owner controls are unavailable:",error.message)}
 }
