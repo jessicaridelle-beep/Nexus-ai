@@ -21,7 +21,7 @@ function decorateHistory(){
  box.querySelectorAll(".history-item").forEach(row=>{
   const id=row.dataset.chatId;if(!id)return;const pinned=pins.has(id);row.classList.toggle("is-pinned",pinned);
   let b=row.querySelector(".orivane-pin");if(!b){b=el("button","orivane-pin");b.type="button";b.title="Pin conversation";b.setAttribute("aria-label","Pin conversation");const del=row.querySelector(".history-delete");if(del)row.insertBefore(b,del);else row.append(b);}
-  b.textContent=pinned?"★":"☆";b.classList.toggle("is-pinned",pinned);b.setAttribute("aria-pressed",String(pinned));
+  const pinLabel=pinned?"★":"☆";if(b.textContent!==pinLabel)b.textContent=pinLabel;b.classList.toggle("is-pinned",pinned);b.setAttribute("aria-pressed",String(pinned));
   b.onclick=e=>{e.stopPropagation();const next=new Set(read(KEYS.pins,[]));if(next.has(id))next.delete(id);else next.add(id);write(KEYS.pins,[...next]);decorateHistory();};
  });
  const rows=[...box.querySelectorAll(".history-item")];const sorted=[...rows].sort((a,b)=>Number(pins.has(b.dataset.chatId))-Number(pins.has(a.dataset.chatId)));if(sorted.some((r,i)=>r!==rows[i]))sorted.forEach(r=>box.append(r));
