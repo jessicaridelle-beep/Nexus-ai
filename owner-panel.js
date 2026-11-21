@@ -110,7 +110,7 @@ async function installOwnerEntry(event){
   $("ownerActivateOpen")?.remove();
   delete window.ORIVANE_ADMIN_PANEL;
   if(!profile||!user)return;
-  if(user.role==="owner"){
+  if(user.role==="owner"&&localStorage.getItem("orivane-secret-unlocked-v1")==="1"){
    const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");
    b.onclick=open;profile.after(b);
    window.ORIVANE_ADMIN_PANEL={open};
@@ -121,6 +121,26 @@ async function installOwnerEntry(event){
   return;
  }catch(error){console.warn("ORIVANE admin controls are unavailable:",error.message)}
 }
+function installSecretUnlock(){
+ const sidebar=$("sidebar");
+ if(!sidebar||$("secretUnlock"))return;
+ const button=node("button",{type:"button",id:"secretUnlock",class:"secret-unlock"},"⌁ Secret");
+ button.setAttribute("aria-label","Unlock the hidden admin panel entry");
+ button.onclick=()=>{
+  const entered=window.prompt("Enter the secret code");
+  if(entered===null)return;
+  if(entered!=="categorised under 14"){window.alert("Incorrect secret code.");return}
+  localStorage.setItem("orivane-secret-unlocked-v1","1");
+  button.textContent="✓ Secret unlocked";
+  installOwnerEntry();
+  api("auth-me").then(auth=>{
+   if(!auth.authenticated||auth.user?.role!=="owner")window.alert("Code accepted. Sign in with the owner account to reveal Admin Panel.");
+  }).catch(()=>window.alert("Code accepted. Sign in with the owner account to reveal Admin Panel."));
+ };
+ sidebar.append(button);
+ if(localStorage.getItem("orivane-secret-unlocked-v1")==="1")button.textContent="✓ Secret unlocked";
+}
+installSecretUnlock();
 installOwnerEntry();
 window.addEventListener("orivane-auth-updated",installOwnerEntry);
 heartbeat();setInterval(heartbeat,30000);
