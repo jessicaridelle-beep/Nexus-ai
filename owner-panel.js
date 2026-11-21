@@ -99,27 +99,17 @@ async function refreshVisitors(){try{let id=localStorage.getItem("orivane-anon-v
 function heartbeat(){let id=localStorage.getItem("orivane-anon-visitor-id");if(!id){id=crypto.randomUUID();localStorage.setItem("orivane-anon-visitor-id",id)}fetch(API+"?action=visitor-heartbeat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitorId:id})}).catch(()=>{})}
 apply();
 let ownerAuthRenderVersion=0;
-async function installOwnerEntry(event){
- const renderVersion=++ownerAuthRenderVersion;
- try{
-  const auth=event&&event.detail&&Object.prototype.hasOwnProperty.call(event.detail,"user")?{authenticated:!!event.detail.user,user:event.detail.user}:await api("auth-me");
-  if(renderVersion!==ownerAuthRenderVersion)return;
-  const user=auth.authenticated?auth.user:null;
-  const profile=$("profileOpen");
-  $("adminPanelOpen")?.remove();
-  $("ownerActivateOpen")?.remove();
-  delete window.ORIVANE_ADMIN_PANEL;
-  if(!profile||!user)return;
-  if(user.role==="owner"&&localStorage.getItem("orivane-secret-unlocked-v1")==="1"){
-   const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");
-   b.onclick=open;profile.after(b);
-   window.ORIVANE_ADMIN_PANEL={open};
-   return;
-  }
-  // Admin access is assigned only by the Worker to the first registered account.
-  // Never offer an activation button to later visitors.
-  return;
- }catch(error){console.warn("ORIVANE admin controls are unavailable:",error.message)}
+async function installOwnerEntry(){
+ const profile=$("profileOpen");
+ if(!profile)return;
+ $("adminPanelOpen")?.remove();
+ delete window.ORIVANE_ADMIN_PANEL;
+ // The secret phrase reveals the existing panel UI. Privileged server actions
+ // still independently verify the authenticated owner role via ownerStatus().
+ if(localStorage.getItem("orivane-secret-unlocked-v1")!=="1")return;
+ const b=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");
+ b.onclick=open;profile.after(b);
+ window.ORIVANE_ADMIN_PANEL={open};
 }
 function installSecretUnlock(){
  const sidebar=$("sidebar");
