@@ -794,10 +794,17 @@ export default {
             const searchResponse = await env.AI.websearch({
               gatewayId: "default",
               query: latestQuestion,
-              provider: "exa",
+              provider: "ceramic",
               limit: 5
             });
-            if (!searchResponse.ok) throw new Error("Web search returned HTTP " + searchResponse.status);
+            if (!searchResponse.ok) {
+              if (searchResponse.status === 402) {
+                webSearchStatus = "billing-required";
+                webContext = "LIVE WEB SEARCH BILLING BLOCK: Cloudflare AI Gateway returned HTTP 402 Payment Required. The search request did not run. This is an account billing/provider-credentials configuration issue, not a temporary internet outage. Do not invent current facts, numbers, prices, exchange rates, news, or sources. Tell the user briefly that live search is blocked until the account owner configures AI Gateway credits or a provider API key. Do not claim that searching succeeded.";
+              } else {
+                throw new Error("Web search returned HTTP " + searchResponse.status);
+              }
+            }
             const searchData = await searchResponse.json();
             const items = Array.isArray(searchData.items) ? searchData.items : (Array.isArray(searchData.results) ? searchData.results : []);
             if (items.length) {
@@ -813,8 +820,10 @@ export default {
               webContext = "Live web search ran but returned no usable results. Do not invent sources or claim that a fact was verified.";
             }
           } catch (searchError) {
-            webSearchStatus = "unavailable";
-            webContext = "Live web search was attempted but failed: " + (searchError && searchError.message ? searchError.message : "unknown error") + ". Do not pretend you searched successfully; tell the user browsing is temporarily unavailable.";
+            if (webSearchStatus !== "billing-required") {
+              webSearchStatus = "unavailable";
+              webContext = "Live web search was attempted but failed: " + (searchError && searchError.message ? searchError.message : "unknown error") + ". Do not pretend you searched successfully; tell the user browsing is temporarily unavailable.";
+            }
           }
         }
       }
