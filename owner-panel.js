@@ -161,20 +161,21 @@ let ownerAuthRenderVersion=0;
 function installOwnerEntry(){
  const unlocked=localStorage.getItem("orivane-secret-unlocked-v1")==="1";
  const profile=$("profileOpen"),sidebar=$("sidebar");
- $("adminPanelOpen")?.remove();$("adminPanelSidebarOpen")?.remove();
- delete window.ORIVANE_ADMIN_PANEL;
- if(!unlocked)return;
+ if(!unlocked){
+  $("adminPanelOpen")?.remove();$("adminPanelSidebarOpen")?.remove();
+  delete window.ORIVANE_ADMIN_PANEL;
+  return;
+ }
+ let top=$("adminPanelOpen");
  if(profile){
-  const top=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");
-  top.onclick=open;profile.after(top);
+  if(!top){top=node("button",{type:"button",id:"adminPanelOpen",class:"header-action"},"♛ Admin Panel");profile.after(top)}
+  top.onclick=open;
  }
+ let side=$("adminPanelSidebarOpen");
  if(sidebar){
-  const side=node("button",{type:"button",id:"adminPanelSidebarOpen",class:"secret-unlock admin-sidebar-entry"},"♛ Open Admin Panel");
+  if(!side){side=node("button",{type:"button",id:"adminPanelSidebarOpen",class:"secret-unlock admin-sidebar-entry"},"♛ Open Admin Panel");const secret=$("secretUnlock");if(secret)secret.after(side);else sidebar.append(side)}
   side.onclick=open;
-  const secret=$("secretUnlock");if(secret)secret.after(side);else sidebar.append(side);
  }
- // The local panel is unlocked by the phrase; privileged server actions still
- // independently verify the authenticated owner role via ownerStatus().
  window.ORIVANE_ADMIN_PANEL={open};
 }
 function installSecretUnlock(){
