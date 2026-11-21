@@ -28,7 +28,7 @@ function open(){
  intro.append(node("div",{class:"owner-kicker"},"ORIVANE · ADMIN CONTROL CENTER"),node("h2",{class:"owner-title"},"Control Center"),node("p",{class:"owner-sub"},"Appearance and personal AI settings are local. Global AI controls are available only to the authenticated owner account."));
  head.append(intro,close);card.append(head);
  const tabs=node("div",{class:"admin-tabs"}),content=node("div",{class:"admin-content"});card.append(tabs,content);overlay.append(card);overlay.onclick=e=>{if(e.target===overlay)overlay.hidden=true};document.body.append(overlay);
- let active="Overview";const names=["Overview","Appearance","AI controls","Global AI","Visitors"];
+ let active="Overview";const names=["Overview","Appearance","AI controls","Global AI","Visitors","Admin Lab"];
  function render(){
   tabs.replaceChildren();names.forEach(name=>{const b=node("button",{type:"button",class:name===active?"active":""},name);b.onclick=()=>{active=name;render()};tabs.append(b)});content.replaceChildren();
   if(active==="Overview"){
@@ -72,6 +72,28 @@ function open(){
    form.append(save);content.append(form);
   }
   if(active==="Global AI")renderGlobal();
+  if(active==="Admin Lab"){
+   const grid=node("div",{class:"owner-grid"});
+   const stats=[["BROWSER",navigator.userAgent],["SCREEN",window.screen.width+" × "+window.screen.height],["VIEWPORT",window.innerWidth+" × "+window.innerHeight],["STORAGE",(()=>{let bytes=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||"";if(k.startsWith("orivane-"))bytes+=(k.length+(localStorage.getItem(k)||"").length)*2;}return (bytes/1024).toFixed(1)+" KB · ORIVANE data"})()]];
+   stats.forEach(([label,value])=>{const tile=node("article",{class:"owner-tile"});tile.append(node("small",{},label),node("strong",{},String(value)),node("p",{},"Local device diagnostic"));grid.append(tile)});
+   content.append(grid);
+   const status=node("p",{class:"owner-status"},"Admin Lab tools affect this browser only. They do not change server permissions or other visitors' settings.");content.append(status);
+   const actions=node("div",{class:"admin-inline-actions"});
+   const diagnostics=node("button",{class:"owner-primary",type:"button"},"Run diagnostics");
+   diagnostics.onclick=()=>{const checks=[["Local storage",(()=>{try{const k="orivane-diagnostic-test";localStorage.setItem(k,"ok");localStorage.removeItem(k);return "OK"}catch{return "Unavailable"}})()],["Chat history",(()=>{try{const v=JSON.parse(localStorage.getItem("orivane-chat-history-v1")||"[]");return Array.isArray(v)?v.length+" saved":"Invalid format"}catch{return "Unreadable"}})()],["Projects",(()=>{try{const v=JSON.parse(localStorage.getItem("orivane-projects-v1")||"[]");return Array.isArray(v)?v.length+" saved":"Invalid format"}catch{return "Unreadable"}})()],["API reachability","See Control Center health check"]];status.textContent=checks.map(x=>x[0]+": "+x[1]).join(" · ");};
+   const randomTheme=node("button",{class:"owner-secondary",type:"button"},"✦ Random accent");
+   randomTheme.onclick=()=>{const colours=["#ff8a32","#48a9ff","#a78bfa","#50c99a","#ff6b9d","#e8c547","#24c8b5"];cfg.accent=colours[Math.floor(Math.random()*colours.length)];localStorage.setItem(KEY,JSON.stringify(cfg));apply();recordChange("Admin Lab generated a random local accent colour.");status.textContent="New accent applied: "+cfg.accent;};
+   const focus=node("button",{class:"owner-secondary",type:"button"},"◉ Toggle focus mode");
+   focus.onclick=()=>{const enabled=!document.body.classList.contains("orivane-focus-mode");document.body.classList.toggle("orivane-focus-mode",enabled);let css=document.getElementById("orivaneFocusStyle");if(!css){css=node("style",{id:"orivaneFocusStyle"},"body.orivane-focus-mode .sidebar,body.orivane-focus-mode .topbar,body.orivane-focus-mode .tool-dock{opacity:.18;transition:opacity .2s}body.orivane-focus-mode .sidebar:hover,body.orivane-focus-mode .topbar:hover,body.orivane-focus-mode .tool-dock:hover{opacity:1}");document.head.append(css);}focus.textContent=enabled?"◉ Exit focus mode":"◉ Toggle focus mode";status.textContent=enabled?"Focus mode enabled. Hover navigation areas to reveal them.":"Focus mode disabled.";};
+   const easter=node("button",{class:"owner-secondary",type:"button"},"🎲 Surprise me");
+   easter.onclick=()=>{const lines=["ORIVANE is now running on pure curiosity.","Orange energy protocol: activated.","Secret level unlocked: you found the Admin Lab.","Today's mission: build something brilliant.","System status: dangerously creative."];status.textContent=lines[Math.floor(Math.random()*lines.length)];};
+   const backup=node("button",{class:"owner-secondary",type:"button"},"⇧ Workspace backup");
+   backup.onclick=()=>{const b=document.getElementById("orivaneBackupOpen");if(b)b.click();else status.textContent="Open Workspace backup from the chat tools.";};
+   const compare=node("button",{class:"owner-secondary",type:"button"},"⇄ Compare answers");
+   compare.onclick=()=>{const b=document.getElementById("orivaneCompareOpen");if(b)b.click();else status.textContent="Open Compare answers from the chat tools.";};
+   actions.append(diagnostics,randomTheme,focus,easter,backup,compare);content.append(actions);
+   content.append(node("p",{class:"owner-foot"},"Admin Lab is a local toolbox: diagnostics, random accent generator, focus mode, surprise messages, workspace backup and answer comparison. Global AI settings remain protected by authenticated owner access."));
+  }
   if(active==="Visitors"){
    const grid=node("div",{class:"owner-grid"}),a=node("article",{class:"owner-tile"}),b=node("article",{class:"owner-tile"});
    a.append(node("small",{},"VISITORS ACTIVE NOW"),node("strong",{id:"visitorActive"},"Loading…"),node("p",{},"Approximate anonymous sessions active in the last 90 seconds"));
