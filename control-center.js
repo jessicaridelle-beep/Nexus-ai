@@ -59,9 +59,7 @@ function buildDashboard(){
  makeWidget("orivaneProjectCount","PROJECTS","0 saved","Stored on this device");
  const actions=document.createElement("div");actions.className="orivane-widget-actions";
  const action=(label,fn)=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.addEventListener("click",()=>{tone("tap");fn();});actions.append(b);};
- action("＋ New chat",()=>$("newChat")?.click());
- action("⌘ Command centre",()=>openCommandPalette());
- action("🎨 Theme studio",()=>themeStudio.open());
+ // Duplicate shortcuts are omitted: New chat is in the sidebar, Command centre is in the tools area, and Theme studio is in the command palette.
  const sound=document.createElement("button");sound.type="button";sound.id="orivaneSoundToggle";actions.append(sound);
  function updateSoundLabel(){sound.textContent=soundEnabled()?"♪ Sounds: on":"♪ Sounds: off";sound.setAttribute("aria-pressed",String(soundEnabled()));}
  sound.addEventListener("click",()=>{localStorage.setItem(SOUND_KEY,String(!soundEnabled()));updateSoundLabel();if(soundEnabled())tone("tap");});
