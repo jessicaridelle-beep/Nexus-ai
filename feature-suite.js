@@ -13,7 +13,7 @@ function decorateHistory(){
  const tools=box.parentElement?.querySelector(".orivane-history-tools");
  if(tools&&!tools.querySelector(".orivane-full-search")){
   const search=el("input","orivane-full-search");search.type="search";search.placeholder="Search inside all saved messages…";search.setAttribute("aria-label","Search inside saved messages");tools.append(search);
-  search.addEventListener("input",()=>{const q=search.value.trim().toLowerCase();box.querySelectorAll(".history-item").forEach(row=>{const chat=read(KEYS.chats).find(x=>x.id===row.dataset.chatId);const hay=(chat?.title||"")+" "+(chat?.messages||[]).map(m=>m.content||"").join(" ");row.hidden=!!q&&!hay.toLowerCase().includes(q);});});
+  search.addEventListener("input",()=>{applyFullSearch(search.value);});
  }
  const pins=new Set(read(KEYS.pins,[]));
  box.querySelectorAll(".history-item").forEach(row=>{
@@ -22,8 +22,10 @@ function decorateHistory(){
   b.textContent=pinned?"★":"☆";b.classList.toggle("is-pinned",pinned);b.setAttribute("aria-pressed",String(pinned));
   b.onclick=e=>{e.stopPropagation();const next=new Set(read(KEYS.pins,[]));if(next.has(id))next.delete(id);else next.add(id);write(KEYS.pins,[...next]);decorateHistory();};
  });
- const rows=[...box.querySelectorAll(".history-item")];rows.sort((a,b)=>Number(pins.has(b.dataset.chatId))-Number(pins.has(a.dataset.chatId)));rows.forEach(r=>box.append(r));
+ const rows=[...box.querySelectorAll(".history-item")];const sorted=[...rows].sort((a,b)=>Number(pins.has(b.dataset.chatId))-Number(pins.has(a.dataset.chatId)));if(sorted.some((r,i)=>r!==rows[i]))sorted.forEach(r=>box.append(r));
+ const fullSearch=box.parentElement?.querySelector(".orivane-full-search");if(fullSearch)applyFullSearch(fullSearch.value);
 }
+function applyFullSearch(value){const box=$("#chatHistory");if(!box)return;const q=String(value||"").trim().toLowerCase();const chats=read(KEYS.chats);box.querySelectorAll(".history-item").forEach(row=>{const chat=chats.find(x=>x.id===row.dataset.chatId);const hay=(chat?.title||"")+" "+(chat?.messages||[]).map(m=>m.content||"").join(" ");row.hidden=!!q&&!hay.toLowerCase().includes(q);});}
 const historyBox=$("#chatHistory");if(historyBox)new MutationObserver(decorateHistory).observe(historyBox,{childList:true,subtree:true});
 decorateHistory();
 const modal=el("div","orivane-suite-modal");modal.hidden=true;const card=el("section","orivane-suite-card");card.setAttribute("role","dialog");card.setAttribute("aria-modal","true");const close=el("button","orivane-suite-close","Close");close.type="button";const heading=el("h2","","Workspace tools");const desc=el("p","","Portable backups and model comparison. Your data stays in this browser unless you export it.");const body=el("div");card.append(close,heading,desc,body);modal.append(card);document.body.append(modal);
