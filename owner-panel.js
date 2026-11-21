@@ -28,7 +28,7 @@ function open(){
  intro.append(node("div",{class:"owner-kicker"},"ORIVANE · ADMIN CONTROL CENTER"),node("h2",{class:"owner-title"},"Control Center"),node("p",{class:"owner-sub"},"Appearance and personal AI settings are local. Global AI controls are available only to the authenticated owner account."));
  head.append(intro,close);card.append(head);
  const tabs=node("div",{class:"admin-tabs"}),content=node("div",{class:"admin-content"});card.append(tabs,content);overlay.append(card);overlay.onclick=e=>{if(e.target===overlay)overlay.hidden=true};document.body.append(overlay);
- let active="Overview";const names=["Overview","Appearance","AI controls","Global AI","Visitors","Admin Lab"];
+ let active="Overview";const names=["Overview","Life tools","Appearance","AI controls","Global AI","Visitors","Admin Lab"];
  function render(){
   tabs.replaceChildren();names.forEach(name=>{const b=node("button",{type:"button",class:name===active?"active":""},name);b.onclick=()=>{active=name;render()};tabs.append(b)});content.replaceChildren();
   if(active==="Overview"){
@@ -72,6 +72,44 @@ function open(){
    form.append(save);content.append(form);
   }
   if(active==="Global AI")renderGlobal();
+  if(active==="Life tools"){
+   const KEY_LIFE="orivane-life-tools-v1";
+   const readLife=()=>{try{const v=JSON.parse(localStorage.getItem(KEY_LIFE)||"{}");return v&&typeof v==="object"?v:{}}catch{return {}}};
+   const life=readLife(),today=new Date().toISOString().slice(0,10);
+   if(life.date!==today){life.date=today;life.priorities=["","",""];life.checkIn=life.checkIn||"";try{localStorage.setItem(KEY_LIFE,JSON.stringify(life))}catch{}}
+   if(!Array.isArray(life.tasks))life.tasks=[];
+   const status=node("p",{class:"owner-status"},"A private, local-first personal command centre. Nothing here is sent to ORIVANE's server or shared with visitors.");
+   content.append(status);
+   const priorities=node("section",{class:"admin-form"});priorities.append(node("h3",{},"Today's top 3"));
+   const priorityInputs=[];
+   for(let i=0;i<3;i++){const field=input(priorities,"Priority "+(i+1),"text",String(life.priorities[i]||""),{maxlength:"140",placeholder:["The one thing that matters most…","A useful second win…","A small task worth finishing…"][i]});priorityInputs.push(field);}
+   const savePriorities=node("button",{class:"owner-primary",type:"button"},"Save today's priorities");
+   savePriorities.onclick=()=>{life.priorities=priorityInputs.map(x=>x.value.trim().slice(0,140));life.date=today;localStorage.setItem(KEY_LIFE,JSON.stringify(life));recordChange("Saved today's three personal priorities.");savePriorities.textContent="Priorities saved ✓"};
+   priorities.append(savePriorities);content.append(priorities);
+   const taskSection=node("section",{class:"admin-form"});taskSection.append(node("h3",{},"Quick-capture inbox"));
+   const taskInput=input(taskSection,"Add a task or idea","text","",{maxlength:"180",placeholder:"Anything on your mind — capture it here…"});
+   const taskList=node("div",{class:"admin-form"});
+   const taskStatus=node("p",{class:"owner-foot"},"Tasks are stored only in this browser. Tick items when finished; remove anything you no longer need.");
+   const renderTasks=()=>{taskList.replaceChildren();if(!life.tasks.length){taskList.append(node("p",{class:"owner-foot"},"Your inbox is clear. Add a task or idea above."));return}
+    life.tasks.slice(0,100).forEach((task,index)=>{const row=node("div",{class:"admin-inline-actions"});const label=node("label",{class:"admin-check"}),check=node("input",{type:"checkbox"});check.checked=!!task.done;check.onchange=()=>{task.done=check.checked;localStorage.setItem(KEY_LIFE,JSON.stringify(life));renderTasks()};label.append(check,node("span",{},task.text));if(task.done)label.style.opacity=".55";const remove=node("button",{class:"owner-secondary",type:"button"},"Remove");remove.onclick=()=>{life.tasks.splice(index,1);localStorage.setItem(KEY_LIFE,JSON.stringify(life));renderTasks()};row.append(label,remove);taskList.append(row);});
+   };
+   const addTask=node("button",{class:"owner-primary",type:"button"},"＋ Capture task");
+   addTask.onclick=()=>{const value=taskInput.value.trim();if(!value)return;if(life.tasks.length>=100){taskStatus.textContent="Inbox limit reached (100). Remove completed items first.";return}life.tasks.unshift({text:value.slice(0,180),done:false,createdAt:new Date().toISOString()});localStorage.setItem(KEY_LIFE,JSON.stringify(life));taskInput.value="";taskStatus.textContent="Captured ✓";renderTasks()};
+   taskInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addTask.click()}});
+   taskSection.append(addTask,taskStatus,taskList);content.append(taskSection);renderTasks();
+   const review=node("section",{class:"admin-form"});review.append(node("h3",{},"Daily / weekly reflection"));
+   const reflection=input(review,"What went well? What is one thing to improve?","textarea",String(life.checkIn||""),{rows:"4",maxlength:"1200",placeholder:"A quick note to your future self…"});
+   const saveReview=node("button",{class:"owner-primary",type:"button"},"Save reflection");
+   saveReview.onclick=()=>{life.checkIn=reflection.value.slice(0,1200);life.reflectionDate=today;localStorage.setItem(KEY_LIFE,JSON.stringify(life));recordChange("Saved a private personal reflection.");saveReview.textContent="Reflection saved ✓"};
+   review.append(saveReview);content.append(review);
+   const tools=node("div",{class:"admin-inline-actions"});
+   const exportData=node("button",{class:"owner-secondary",type:"button"},"↓ Export Life Tools data");
+   exportData.onclick=()=>{const blob=new Blob([JSON.stringify({format:"orivane-life-tools",exportedAt:new Date().toISOString(),data:life},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob),a=node("a");a.href=url;a.download="orivane-life-tools-"+today+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);status.textContent="Your private Life Tools data was exported to a file."};
+   const clearDone=node("button",{class:"owner-secondary",type:"button"},"Clear completed tasks");
+   clearDone.onclick=()=>{const count=life.tasks.filter(t=>t.done).length;if(!count){status.textContent="No completed tasks to clear.";return}if(!window.confirm("Remove "+count+" completed task(s) from this device?"))return;life.tasks=life.tasks.filter(t=>!t.done);localStorage.setItem(KEY_LIFE,JSON.stringify(life));renderTasks();status.textContent=count+" completed task(s) cleared."};
+   tools.append(exportData,clearDone);content.append(tools);
+   content.append(node("p",{class:"owner-foot"},"Small but meaningful: choose three priorities, capture thoughts before you forget them, and reflect without needing another app. This is a personal organiser, not a medical, financial or emergency service."));
+  }
   if(active==="Admin Lab"){
    const grid=node("div",{class:"owner-grid"});
    const stats=[["BROWSER",navigator.userAgent],["SCREEN",window.screen.width+" × "+window.screen.height],["VIEWPORT",window.innerWidth+" × "+window.innerHeight],["STORAGE",(()=>{let bytes=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||"";if(k.startsWith("orivane-"))bytes+=(k.length+(localStorage.getItem(k)||"").length)*2;}return (bytes/1024).toFixed(1)+" KB · ORIVANE data"})()]];
