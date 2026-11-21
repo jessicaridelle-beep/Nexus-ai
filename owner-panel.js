@@ -143,7 +143,36 @@ function open(){
   const form=node("div",{class:"admin-form"});content.append(node("p",{class:"owner-foot"},"Global instructions affect ORIVANE for every visitor, including you. Only the account assigned Admin access can read or change these settings."));
   const status=node("p",{class:"owner-status"},"Checking owner access…");content.append(status);
   try{
-   const access=await ownerStatus();const user=access.user;if(!user||user.role!=="owner"){const ownerName=access.ownerInfo?.ownerUsername;status.textContent=!user?(ownerName?"Not signed in. Global AI belongs to the owner account: "+ownerName+".":"Not signed in. Sign in with the account assigned as the ORIVANE owner."):(ownerName?"Signed in as "+user.username+", but Global AI is assigned to the owner account: "+ownerName+".":"Signed in as "+user.username+", but this account does not have the owner role.");status.classList.add("error");const signIn=node("button",{class:"owner-primary",type:"button"},user?"Switch account / sign in":"Open sign in");signIn.onclick=()=>{const profile=document.getElementById("profileOpen");if(profile)profile.click();else status.textContent="Open Profile / Sign in from the sidebar, then return to Global AI."};content.append(signIn);return}
+   const access=await ownerStatus();const user=access.user;
+   if(!user||user.role!=="owner"){
+    status.classList.remove("error");
+    if(user){
+     status.textContent="This account is signed in, but it doesn't have owner permissions. Sign in with the ORIVANE owner account to manage shared AI settings.";
+     status.classList.add("error");
+     const switchBtn=node("button",{class:"owner-secondary",type:"button"},"Sign out and switch account");
+     switchBtn.onclick=async()=>{try{await api("auth-logout",{method:"POST"});window.dispatchEvent(new Event("orivane-auth-updated"));renderGlobal()}catch(e){status.textContent=e.message;status.classList.add("error")}};
+     content.append(switchBtn);return;
+    }
+    status.textContent="Sign in here with your ORIVANE owner account to unlock shared AI settings.";
+    const login=node("form",{class:"admin-form"});
+    const username=input(login,"Owner username","text","JR",{autocomplete:"username",maxlength:"24"});
+    const password=input(login,"Owner password","password","",{autocomplete:"current-password",maxlength:"128"});
+    const signIn=node("button",{class:"owner-primary",type:"submit"},"Unlock Global AI settings");
+    const loginStatus=node("p",{class:"owner-status"},"Your password is sent to the ORIVANE Worker for authentication. It is not saved in this browser.");
+    login.append(signIn,loginStatus);
+    login.onsubmit=async e=>{
+     e.preventDefault();if(!password.value){loginStatus.textContent="Enter your owner password.";loginStatus.classList.add("error");return}
+     signIn.disabled=true;loginStatus.classList.remove("error");loginStatus.textContent="Checking owner account…";
+     try{
+      const result=await api("auth-login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:username.value.trim(),password:password.value})});
+      password.value="";
+      if(result.user?.role!=="owner"){await api("auth-logout",{method:"POST"});throw new Error("That account does not have owner permissions.")}
+      window.dispatchEvent(new Event("orivane-auth-updated"));
+      renderGlobal();
+     }catch(e){loginStatus.textContent=e.message||"Could not sign in.";loginStatus.classList.add("error");signIn.disabled=false}
+    };
+    content.append(login);return;
+   }
    const data=await api("global-ai-settings");globalData={instructions:data.instructions||"",changeLog:data.changeLog||""};
    const instructions=input(form,"Global AI instructions","textarea",globalData.instructions,{rows:"6",maxlength:"4000",placeholder:"Set ORIVANE's shared tone, response rules, and priorities for everyone…"});
    const notes=input(form,"Shared website change log / site notes","textarea",globalData.changeLog,{rows:"7",maxlength:"8000",placeholder:"Describe website changes, new features, removed features, important UI behaviour, and how they work. ORIVANE receives these notes in every visitor's chat."});
