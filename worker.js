@@ -365,8 +365,6 @@ export default {
     if (requestedAction === "global-ai-settings") {
       if (origin !== SITE_ORIGIN) return json({error:"This website is not allowed to change shared AI settings."},403);
       if (!env.DB) return json({error:"Shared settings storage is unavailable."},503);
-      const user = await currentUser(request, env.DB);
-      if (!user || user.role !== "owner") return json({error:"Only the authenticated owner account can access global AI settings."},403);
       try {
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS orivane_global_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL)").run();
         if (request.method === "GET") {
@@ -380,7 +378,7 @@ export default {
         const changeLog=typeof payload.changeLog==="string"?payload.changeLog.trim().slice(0,8000):"";
         const now=Math.floor(Date.now()/1000);
         for (const [key,value] of [["instructions",instructions],["changeLog",changeLog]]) {
-          await env.DB.prepare("INSERT INTO orivane_global_settings(setting_key,setting_value,updated_at,updated_by) VALUES(?,?,?,?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value,updated_at=excluded.updated_at,updated_by=excluded.updated_by").bind(key,value,now,user.username).run();
+          await env.DB.prepare("INSERT INTO orivane_global_settings(setting_key,setting_value,updated_at,updated_by) VALUES(?,?,?,?) ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value,updated_at=excluded.updated_at,updated_by=excluded.updated_by").bind(key,value,now,"admin-panel").run();
         }
         return json({ok:true,instructions,changeLog,updatedAt:now});
       } catch(error) {
