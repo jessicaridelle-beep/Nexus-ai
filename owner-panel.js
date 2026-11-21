@@ -192,12 +192,16 @@ function installSecretUnlock(){
    localStorage.setItem("orivane-secret-unlocked-v1","1");
    button.textContent="✓ Secret unlocked";
    installOwnerEntry();
-   window.alert("Secret accepted. Admin Panel is unlocked. Global AI is available inside the Admin Panel.");
+   window.alert("Secret accepted. Admin Panel is unlocked.");
   };
-  sidebar.append(button);
  }
+ // Keep the Secret control inside the visible sidebar footer area.
+ const footer=$(".sidebar-bottom");
+ if(footer){sidebar.insertBefore(button,footer)}else{sidebar.append(button)}
  if(localStorage.getItem("orivane-secret-unlocked-v1")==="1")button.textContent="✓ Secret unlocked";
+ else button.textContent="⌁ Secret";
 }
+
 installSecretUnlock();
 installOwnerEntry();
 window.addEventListener("orivane-auth-updated",installOwnerEntry);
