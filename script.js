@@ -232,16 +232,16 @@ function restoreMemory(){if(!memoryEnabled)return;try{const saved=JSON.parse(loc
 
 /* Local reply watchdog. Only fixed diagnostic codes are saved or sent by the authenticated owner. */
 const ORIVANE_LOCAL_REPORT="orivane-report-local-v1";
-const ORIVANE_BROWSER_CODES=new Set(["browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const ORIVANE_BROWSER_CODES=new Set(["browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_render_unresolved","browser_report_upload_failed","browser_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 function orivaneLocalReport(){
   try{const rows=JSON.parse(localStorage.getItem(ORIVANE_LOCAL_REPORT)||"[]");return Array.isArray(rows)?rows.filter(r=>r&&ORIVANE_BROWSER_CODES.has(r.code)&&/^\d{4}-\d{2}-\d{2}$/.test(r.day)&&["fast","thinking","pro","unknown"].includes(r.mode)&&Number.isSafeInteger(r.count)&&r.count>0).slice(0,300):[];}catch{return [];}
 }
-function orivaneBrowserReport(codes){
+function orivaneBrowserReport(codes,localOnly=false){
   const day=new Date().toISOString().slice(0,10),mode=["fast","thinking","pro"].includes(responseMode)?responseMode:"unknown",known=[...new Set(codes)].filter(c=>ORIVANE_BROWSER_CODES.has(c));
   if(!known.length)return;
   try{const rows=orivaneLocalReport().filter(r=>r.day>=new Date(Date.now()-30*86400000).toISOString().slice(0,10));for(const code of known){const row=rows.find(r=>r.day===day&&r.mode===mode&&r.code===code);if(row)row.count=Math.min(row.count+1,1000000000);else rows.unshift({day,mode,code,count:1});}localStorage.setItem(ORIVANE_LOCAL_REPORT,JSON.stringify(rows.slice(0,300)));}catch{}
   // No anonymous uploads. The Worker independently checks the authenticated owner role.
-  if(typeof signedInUser!=="undefined"&&signedInUser?.role==="owner")fetch(ORIVANE_API_URL+"?action=orivane-report",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({codes:known,mode}),keepalive:true}).catch(()=>{});
+  if(!localOnly&&typeof signedInUser!=="undefined"&&signedInUser?.role==="owner")fetch(ORIVANE_API_URL+"?action=orivane-report",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({codes:known,mode}),keepalive:true}).then(r=>{if(!r.ok)throw Error("Report upload failed");}).catch(()=>orivaneBrowserReport(["browser_report_upload_failed"],true));
 }
 // Check the actual message DOM, not merely the model's valid Markdown.
 function orivaneUnclosedBold(text,repair=false){
@@ -288,6 +288,7 @@ function orivaneCheckRenderedReply(row,reply){
     const body=row?.querySelector(".assistant-message-content"),parsed=orivaneParseCard(reply);
     if(body){body.replaceChildren();renderMessageText(body,orivaneUnclosedBold(parsed.text,true).text);}
     if(parsed.card&&!row?.querySelector(".orivane-interactive-card"))orivaneRenderCard(row,parsed.card);
+    if(orivaneRenderIssues(row,reply).length)orivaneBrowserReport(["browser_render_unresolved"]);
   }catch{orivaneBrowserReport(["browser_runtime_error"]);}
 }
 
