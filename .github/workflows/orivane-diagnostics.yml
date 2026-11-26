@@ -28,7 +28,11 @@ jobs:
         continue-on-error: true
         run: |
           npm install --no-save --package-lock=false playwright@1.56.1
-          npx playwright install --with-deps chromium
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "ORIVANE_CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: Run browser diagnostics
         id: browser
         if: steps.browser_setup.outcome == 'success'
@@ -37,6 +41,14 @@ jobs:
           ORIVANE_BROWSER_REPORT: /tmp/orivane-browser-report.json
           ORIVANE_LIVE_TEST: ${{ github.event_name != 'push' || contains(github.event.head_commit.message, 'Enable automated browser diagnostics') }}
         run: node scripts/orivane-browser-tests.mjs
+      - name: Record browser setup failure
+        if: always()
+        run: |
+          if [ ! -s /tmp/orivane-browser-report.json ]; then
+            node -e 'const fs=require("node:fs");fs.writeFileSync("/tmp/orivane-browser-report.json",JSON.stringify({checks:[{name:"Browser runner setup or execution failed",status:"fail",code:process.env.SETUP_STATUS==="success"?"browser_execution_failed":"browser_install_failed"}]}))'
+          fi
+        env:
+          SETUP_STATUS: ${{ steps.browser_setup.outcome }}
       - name: Run diagnostics
         id: diagnose
         continue-on-error: true
@@ -63,5 +75,5 @@ jobs:
           path: Orivane-report.json
           retention-days: 7
       - name: Mark failed checks
-        if: steps.diagnose.outcome == 'failure'
+        if: steps.diagnose.outcome == 'failure' || steps.browser_setup.outcome == 'failure' || steps.browser.outcome == 'failure'
         run: exit 1
