@@ -493,3 +493,23 @@ body.studio-open,body.workspace-open,body.action-open{overflow:hidden}
 
 /* Rich answer blocks and chat-local saved replies. */
 .orivane-answer-callout{margin:10px 0;padding:10px 13px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--panel2);overflow-wrap:anywhere}.orivane-answer-callout>strong,.orivane-answer-callout>summary{display:block;font-weight:650;color:var(--text);font-size:13px}.orivane-answer-callout>summary{display:list-item;cursor:pointer}.orivane-callout-tip{border-left-color:#3d9b76}.orivane-callout-warning{border-left-color:#d69645}.orivane-callout-important{border-left-color:#8b7bd5}.orivane-callout-body p:last-child{margin-bottom:0}.orivane-callout-body p:first-child{margin-top:7px}.orivane-saved-replies{flex:1 0 100%;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);max-height:300px;overflow:auto}.orivane-saved-replies[hidden],.orivane-followup-menu[hidden]{display:none!important}.orivane-saved-list{display:grid;gap:8px;margin-top:8px}.orivane-saved-entry{border:1px solid var(--line);border-radius:8px;padding:8px}.orivane-saved-entry p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 6px;font-size:12px}.orivane-followup,.orivane-followup-menu{display:inline-flex;flex-wrap:wrap;gap:5px;align-items:center}.orivane-followup-menu{border:1px solid var(--line);border-radius:8px;padding:4px}.orivane-local-actions button:focus-visible,.orivane-answer-callout summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+
+/* Help & Support */
+.orivane-support-dialog{width:min(620px,calc(100vw - 28px));max-height:85dvh;overflow:auto;box-sizing:border-box;padding:22px;border:1px solid var(--line);border-radius:18px;background:var(--panel2,#171922);color:var(--text,#eee);font:inherit}
+.orivane-support-dialog::backdrop{background:#0009}
+.orivane-support-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.orivane-support-head h2{margin:0;font-size:23px}
+.orivane-support-head button,.orivane-support-submit{font:inherit;cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:8px 13px;background:transparent;color:inherit}
+.orivane-support-dialog p{font-size:13px;line-height:1.55;color:var(--muted,#a9a9b5)}
+.orivane-support-faq{display:grid;gap:7px;margin:16px 0}
+.orivane-support-faq details{border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+.orivane-support-faq summary{cursor:pointer;font-size:14px}
+.orivane-support-faq p{margin:9px 0 0}
+.orivane-support-form{display:grid;gap:9px;border-top:1px solid var(--line);padding-top:14px}
+.orivane-support-form h3,.orivane-support-form p{margin:0}
+.orivane-support-form label{font-size:13px}
+.orivane-support-form select{min-width:0;width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2,#171922);color:inherit;font:inherit}
+.orivane-support-submit{justify-self:start;background:var(--accent,#ff8a32);color:#171717;font-weight:650}
+.orivane-support-submit:disabled{opacity:.6;cursor:wait}
+.orivane-support-status{min-height:1.2em;overflow-wrap:anywhere}
