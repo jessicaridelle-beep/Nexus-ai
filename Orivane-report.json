@@ -1,10 +1,10 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:19:42.214Z",
-  "commit": "bffa060d439be2a65ec3e4e84bc6ae44883b4fa7",
+  "generatedAt": "2026-11-26T21:20:26.485Z",
+  "commit": "2cf8bef83dd282b01b2cb809c31691824f53c843",
   "codeChecks": {
-    "passed": 30,
+    "passed": 31,
     "failed": 0,
     "checks": [
       {
@@ -49,6 +49,10 @@
       },
       {
         "name": "JavaScript syntax: script.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: scripts/orivane-browser-tests.mjs",
         "status": "pass"
       },
       {
