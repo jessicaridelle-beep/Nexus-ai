@@ -424,6 +424,56 @@ async function orivaneAdminAccess(request,env){
 }
 
 
+const GOOGLE_REDIRECT_URI="https://nexus-ai-api.jessicaridelle.workers.dev/?action=google-callback";
+function googleConfigured(env){return typeof env.GOOGLE_CLIENT_ID==="string"&&!!env.GOOGLE_CLIENT_ID&&typeof env.GOOGLE_CLIENT_SECRET==="string"&&!!env.GOOGLE_CLIENT_SECRET;}
+function googleB64(bytes){return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
+function googleRandom(){return googleB64(crypto.getRandomValues(new Uint8Array(32)));}
+async function googleDigest(value){return googleB64(await crypto.subtle.digest("SHA-256",encoder.encode(value)));}
+function googleTokenShape(v){return typeof v==="string"&&/^[A-Za-z0-9_-]{43}$/.test(v);}
+async function googleTables(db){
+  await db.prepare("CREATE TABLE IF NOT EXISTS google_oauth_states (state_hash TEXT PRIMARY KEY, browser_challenge TEXT NOT NULL, provider_verifier TEXT NOT NULL, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL)").run();
+  await db.prepare("CREATE TABLE IF NOT EXISTS google_oauth_handoffs (token_hash TEXT PRIMARY KEY, browser_challenge TEXT NOT NULL, subject TEXT NOT NULL, expires_at INTEGER NOT NULL)").run();
+  await db.prepare("CREATE TABLE IF NOT EXISTS google_identities (subject TEXT PRIMARY KEY, user_id TEXT UNIQUE NOT NULL REFERENCES users(id))").run();
+}
+function googleClaimsValid(claims,clientId,nonce,now=Math.floor(Date.now()/1000)){
+  return !!claims&&["https://accounts.google.com","accounts.google.com"].includes(claims.iss)&&claims.aud===clientId&&(!claims.azp||claims.azp===clientId)&&typeof claims.sub==="string"&&/^[0-9]{1,255}$/.test(claims.sub)&&claims.nonce===nonce&&Number.isFinite(claims.exp)&&claims.exp>now&&Number.isFinite(claims.iat)&&claims.iat<=now+60&&claims.iat>=now-600;
+}
+async function googleVerifyIdentity(token,clientId,nonce){
+  if(typeof token!=="string"||token.length>16000)throw Error("Invalid identity token");
+  const parts=token.split(".");if(parts.length!==3)throw Error("Invalid identity token");
+  const decoder=new TextDecoder(),header=JSON.parse(decoder.decode(orivaneDecodeJwt(parts[0]))),claims=JSON.parse(decoder.decode(orivaneDecodeJwt(parts[1])));
+  if(header.alg!=="RS256"||typeof header.kid!=="string"||!googleClaimsValid(claims,clientId,nonce))throw Error("Invalid identity claims");
+  const response=await fetch("https://www.googleapis.com/oauth2/v3/certs",{redirect:"error",signal:AbortSignal.timeout(8000)});
+  if(!response.ok)throw Error("Google signing keys unavailable");
+  const keys=(await response.json()).keys;
+  const jwk=Array.isArray(keys)&&keys.find(k=>k.kid===header.kid&&k.kty==="RSA"&&(!k.alg||k.alg==="RS256")&&(!k.use||k.use==="sig"));
+  if(!jwk)throw Error("Unknown signing key");
+  const key=await crypto.subtle.importKey("jwk",jwk,{name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["verify"]);
+  if(!(await crypto.subtle.verify("RSASSA-PKCS1-v1_5",key,orivaneDecodeJwt(parts[2]),encoder.encode(parts[0]+"."+parts[1]))))throw Error("Invalid Google signature");
+  return claims.sub;
+}
+async function googleAccount(db,subject){
+  const lookup=()=>db.prepare("SELECT u.id,u.username,u.role FROM google_identities g JOIN users u ON g.user_id=u.id WHERE g.subject=?").bind(subject).first();
+  const existing=await lookup();if(existing)return existing;
+  for(let tries=0;tries<3;tries++){
+    const id=crypto.randomUUID(),username="google_"+crypto.randomUUID().replace(/-/g,"").slice(0,16);
+    const salt=googleB64(crypto.getRandomValues(new Uint8Array(16)));
+    const hash=await passwordHash(googleRandom(),salt);
+    try{
+      await db.batch([
+        db.prepare("INSERT INTO users(id,username,password_hash,password_salt,password_iterations,role) VALUES(?,?,?,?,?,?)").bind(id,username,hash,salt,PASSWORD_ITERATIONS,"user"),
+        db.prepare("INSERT INTO google_identities(subject,user_id) VALUES(?,?)").bind(subject,id)
+      ]);
+      return {id,username,role:"user"};
+    }catch{const found=await lookup();if(found)return found;}
+  }
+  throw Error("Account creation failed");
+}
+function googleReturn(fragment){
+  return new Response(null,{status:303,headers:{Location:PROJECT_SITE+"#"+fragment,"Cache-Control":"no-store","Referrer-Policy":"no-referrer"}});
+}
+
+
 async function verifyStripeSignature(rawBody, signatureHeader, secret) {
   if (!signatureHeader || !secret) return false;
   const parts = signatureHeader.split(",").map(x => x.trim());
@@ -506,6 +556,54 @@ export default {
 
     const incomingUrl = new URL(request.url);
     const requestedAction = incomingUrl.searchParams.get("action");
+
+
+    if(["google-start","google-callback","google-complete"].includes(requestedAction)){
+      const callback=requestedAction==="google-callback";
+      if(!callback&&origin!==SITE_ORIGIN)return json({error:"Origin not allowed."},403);
+      if(request.method!==(callback?"GET":"POST"))return json({error:"Method not allowed."},405);
+      if(!env.DB||!googleConfigured(env))return callback?googleReturn("google-error=not_configured"):json({error:"Google sign-in is not configured yet. Use your ORIVANE account for now."},503);
+      try{
+        await googleTables(env.DB);
+        const now=Math.floor(Date.now()/1000);
+        if(requestedAction==="google-start"){
+          if(!(await allowRateLimit(env,request,"google-start",12,600)))return json({error:"Too many Google sign-in attempts. Try again later."},429);
+          const body=JSON.parse(await readBoundedBody(request,2048));
+          if(!googleTokenShape(body.challenge))return json({error:"Invalid sign-in request."},400);
+          const state=googleRandom(),providerVerifier=googleRandom(),nonce=googleRandom();
+          await env.DB.prepare("DELETE FROM google_oauth_states WHERE expires_at<=?").bind(now).run();
+          await env.DB.prepare("DELETE FROM google_oauth_handoffs WHERE expires_at<=?").bind(now).run();
+          await env.DB.prepare("INSERT INTO google_oauth_states(state_hash,browser_challenge,provider_verifier,nonce,expires_at) VALUES(?,?,?,?,?)").bind(await googleDigest(state),body.challenge,providerVerifier,nonce,now+600).run();
+          const url=new URL("https://accounts.google.com/o/oauth2/v2/auth");
+          url.search=new URLSearchParams({client_id:env.GOOGLE_CLIENT_ID,redirect_uri:GOOGLE_REDIRECT_URI,response_type:"code",scope:"openid",state,nonce,code_challenge:await googleDigest(providerVerifier),code_challenge_method:"S256",prompt:"select_account"}).toString();
+          return json({authorizationUrl:url.href});
+        }
+        if(callback){
+          const state=incomingUrl.searchParams.get("state");
+          if(!googleTokenShape(state))return googleReturn("google-error=invalid_state");
+          const pending=await env.DB.prepare("DELETE FROM google_oauth_states WHERE state_hash=? AND expires_at>? RETURNING browser_challenge,provider_verifier,nonce").bind(await googleDigest(state),now).first();
+          if(!pending)return googleReturn("google-error=invalid_state");
+          if(incomingUrl.searchParams.has("error"))return googleReturn("google-error=cancelled");
+          const code=incomingUrl.searchParams.get("code");
+          if(!code||code.length>4096)return googleReturn("google-error=invalid_state");
+          const tokenResponse=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({code,client_id:env.GOOGLE_CLIENT_ID,client_secret:env.GOOGLE_CLIENT_SECRET,redirect_uri:GOOGLE_REDIRECT_URI,grant_type:"authorization_code",code_verifier:pending.provider_verifier}),redirect:"error",signal:AbortSignal.timeout(12000)});
+          if(!tokenResponse.ok)return googleReturn("google-error=provider_error");
+          const result=await tokenResponse.json();
+          const subject=await googleVerifyIdentity(result.id_token,env.GOOGLE_CLIENT_ID,pending.nonce);
+          const handoff=googleRandom();
+          await env.DB.prepare("INSERT INTO google_oauth_handoffs(token_hash,browser_challenge,subject,expires_at) VALUES(?,?,?,?)").bind(await googleDigest(handoff),pending.browser_challenge,subject,now+120).run();
+          return googleReturn("google-login="+handoff);
+        }
+        if(!(await allowRateLimit(env,request,"google-complete",15,600)))return json({error:"Too many sign-in attempts."},429);
+        const body=JSON.parse(await readBoundedBody(request,2048));
+        if(!googleTokenShape(body.handoff)||!googleTokenShape(body.verifier))return json({error:"Invalid or expired Google sign-in."},400);
+        const pending=await env.DB.prepare("DELETE FROM google_oauth_handoffs WHERE token_hash=? AND browser_challenge=? AND expires_at>? RETURNING subject").bind(await googleDigest(body.handoff),await googleDigest(body.verifier),now).first();
+        if(!pending)return json({error:"Google sign-in expired or was already used. Please try again."},403);
+        const user=await googleAccount(env.DB,pending.subject);
+        const token=await issueSession(env.DB,user.id);
+        return new Response(JSON.stringify({ok:true,user:{username:user.username,role:user.role}}),{status:200,headers:{...headers,"Content-Type":"application/json; charset=utf-8","Set-Cookie":cookieHeader(token)}});
+      }catch{return callback?googleReturn("google-error=provider_error"):json({error:"Google sign-in could not be completed. Please try again."},503);}
+    }
 
     if(["admin-session","admin-login","admin-logout"].includes(requestedAction)){
       if(origin!==SITE_ORIGIN)return json({error:"Origin not allowed."},403);
