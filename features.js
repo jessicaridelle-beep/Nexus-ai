@@ -176,5 +176,46 @@
     decorate();
   }
   installConversationTools();
+
+  function installHelpSupport(){
+    const sidebar=$("sidebar");if(!sidebar||$("orivaneSupportOpen"))return;
+    const element=(tag,text,cls)=>{const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;};
+    const open=element("button","?  Help & Support","side-link");open.type="button";open.id="orivaneSupportOpen";
+    const dialog=element("dialog","","orivane-support-dialog");dialog.setAttribute("aria-labelledby","orivaneSupportTitle");
+    const header=element("header","","orivane-support-head"),title=element("h2","Help & Support"),close=element("button","×");title.id="orivaneSupportTitle";close.type="button";close.setAttribute("aria-label","Close help and support");close.onclick=()=>dialog.close();header.append(title,close);
+    const intro=element("p","Find quick answers or report a problem to the ORIVANE diagnostics team.");
+    const faq=element("section","","orivane-support-faq");
+    const guides=[
+      ["AI replies are empty or slow","Try Fast mode, start a new conversation, and check your connection. If it keeps happening, report an AI chat problem."],
+      ["Formatting or cards look wrong","Refresh once to load the latest version. If bold text, checklists or polls still fail, report the relevant category."],
+      ["Links freeze or do not open","Refresh the app if necessary. Only open links you trust; report a link problem if the chat stops responding."],
+      ["Images do not generate","Try a short image prompt. Provider quotas and temporary outages can affect image generation."],
+      ["Account or Global AI access","Sign in to your ORIVANE account. Global AI settings require the verified owner account."],
+      ["App or update problems","Close and reopen the app while online to load updates. Do not clear browser data unless you have backed up local conversations."]
+    ];
+    for(const [question,answer] of guides){const d=element("details"),q=element("summary",question),p=element("p",answer);d.append(q,p);faq.append(d);}
+    const form=element("form","","orivane-support-form"),heading=element("h3","Report a problem or suggest a feature"),label=element("label","Category"),select=element("select");select.id="orivaneSupportCategory";select.required=true;label.htmlFor=select.id;
+    const options=[["","Select a category"],["support_chat","AI replies / streaming"],["support_formatting","Bold / Markdown formatting"],["support_links","Links / app freezing"],["support_cards","Checklists / interactive cards"],["support_images","Images / GIFs"],["support_account","Account / access"],["support_other","Other technical problem"],["support_suggestion","Feature suggestion"]];
+    for(const [value,name] of options){const o=element("option",name);o.value=value;select.append(o);}
+    const privacy=element("p","Only the selected category and response mode are sent. No chat messages, account details, or links are included in Orivane-report.");
+    const submit=element("button","Submit report","orivane-support-submit");submit.type="submit";
+    const status=element("p","","orivane-support-status");status.setAttribute("role","status");status.setAttribute("aria-live","polite");
+    let lastSent=0;
+    form.addEventListener("submit",async event=>{
+      event.preventDefault();if(!select.value||submit.disabled)return;
+      if(Date.now()-lastSent<15000){status.textContent="Please wait before submitting another report.";return;}
+      submit.disabled=true;status.textContent="Submitting report…";
+      try{
+        const r=await fetch(ORIVANE_API_URL+"?action=support-report",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:select.value,mode:typeof responseMode==="string"?responseMode:"unknown"})});
+        const data=await r.json();if(!r.ok||data.ok!==true)throw Error(r.status===429?"Too many reports. Try again later.":"Report service unavailable. Please try again later.");
+        lastSent=Date.now();status.textContent="Report received! It will be included in Orivane-report diagnostics.";form.reset();
+      }catch(error){status.textContent=error instanceof TypeError?"Could not connect. Your report was not confirmed. Try again when online.":error.message||"Your report was not confirmed.";}
+      finally{submit.disabled=false;}
+    });
+    form.append(heading,label,select,privacy,submit,status);dialog.append(header,intro,faq,form);
+    document.body.append(dialog);const footer=sidebar.querySelector(".sidebar-bottom");if(footer)sidebar.insertBefore(open,footer);else sidebar.append(open);
+    open.onclick=()=>{if(!dialog.open){status.textContent="";dialog.showModal();}};
+  }
+  installHelpSupport();
   renderHistory();
 })();
