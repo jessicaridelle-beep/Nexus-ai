@@ -73,6 +73,20 @@ check("Empty stream fallback and diagnostics wired",()=>{
   assert.ok(worker.includes('["empty_stream"]'));
   assert.ok(worker.includes("orivaneReportRecord"));
 });
+check("Chat links are clickable and unsafe schemes rejected",()=>{
+  const makeNode=tag=>({tag,children:[],append(...items){this.children.push(...items);},appendChild(item){this.children.push(item);}});
+  const ctx=vm.createContext({URL,document:{createElement:makeNode,createTextNode:text=>({tag:"#text",text})}});
+  vm.runInContext(extract(browser,"function appendLink(","function getGifUrlFromText("),ctx);
+  vm.runInContext(extract(browser,"function orivaneInline(","function orivaneMarkdown("),ctx);
+  const links=text=>{const n=makeNode("div");ctx.orivaneInline(n,text);return n.children.filter(x=>x.tag==="a");};
+  assert.equal(links("Visit https://example.com/test.")[0].href,"https://example.com/test");
+  assert.equal(links("www.example.com")[0].href,"https://www.example.com/");
+  assert.equal(links("[Read more](https://example.com/wiki/Test_(topic))")[0].href,"https://example.com/wiki/Test_(topic)");
+  assert.equal(links("<https://example.com>")[0].href,"https://example.com/");
+  assert.equal(links("\x60https://example.com\x60").length,0);
+  const n=makeNode("div");assert.equal(ctx.appendLink(n,"javascript:alert(1)","bad"),null);
+  assert.equal(links("https://example.com")[0].rel,"noopener noreferrer");
+});
 const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const modes=new Set(["fast","thinking","pro","unknown"]);
 let runtimeStatus="not_configured",runtime=[];
