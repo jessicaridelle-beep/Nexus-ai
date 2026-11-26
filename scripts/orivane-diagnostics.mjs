@@ -166,6 +166,42 @@ check("Unclosed bold detected on server and browser; literal code preserved",()=
   assert.equal(ctx.orivaneReplyIssues("**bold**").includes("markdown_unclosed_bold"),false);
   assert.ok(browser.includes('codes.push("browser_unclosed_bold")'));
 });
+try{
+  const {webcrypto}=await import("node:crypto");
+  const origin="https://jessicaridelle-beep.github.io",secret="fixture-only-not-a-real-admin-password",validToken="A".repeat(43);
+  const records=new Map();
+  let owner=null;
+  const db={prepare(sql){return {run:async()=>({}),bind(...args){return {first:async()=>{if(sql.startsWith("SELECT token_hash")){const expiry=records.get(args[0]);return expiry>args[1]?{token_hash:args[0]}:null;}throw Error("Unexpected test query");}};}}}};
+  const ctx=vm.createContext({crypto:webcrypto,encoder:new TextEncoder(),toB64:v=>Buffer.from(v).toString("base64url"),SITE_ORIGIN:origin,currentUser:async()=>owner,Uint8Array});
+  vm.runInContext(extract(worker,"function readCookie(","async function allowRateLimit("),ctx);
+  vm.runInContext(extract(worker,'const ORIVANE_ADMIN_COOKIE=',"async function verifyStripeSignature("),ctx);
+  const env={DB:db,ORIVANE_ADMIN_CODE:secret};
+  const request=(cookie="",site=origin)=>new Request("https://example.com",{headers:{Origin:site,Cookie:cookie}});
+  assert.equal(await ctx.orivaneAdminCodeMatches(secret,env),true);
+  assert.equal(await ctx.orivaneAdminCodeMatches("wrong-code",env),false);
+  assert.equal(await ctx.orivaneAdminCodeMatches(secret,{DB:db}),false);
+  assert.equal(await ctx.orivaneAdminAccess(request(),env),null);
+  const hash=await ctx.orivaneAdminTokenHash(validToken,env);
+  const cookie="orivane_admin_session="+validToken;
+  records.set(hash,Math.floor(Date.now()/1000)+60);
+  assert.equal((await ctx.orivaneAdminAccess(request(cookie),env)).source,"admin");
+  assert.equal(await ctx.orivaneAdminAccess(request("orivane_admin_session="+"B".repeat(43)),env),null);
+  assert.equal(await ctx.orivaneAdminAccess(request(cookie,"https://untrusted.example"),env),null);
+  assert.equal(await ctx.orivaneAdminAccess(request(cookie),{DB:db,ORIVANE_ADMIN_CODE:secret+"-rotated"}),null);
+  records.set(hash,0);
+  assert.equal(await ctx.orivaneAdminAccess(request(cookie),env),null);
+  owner={role:"user",username:"test-user"};
+  assert.equal(await ctx.orivaneAdminAccess(request(),env),null);
+  owner={role:"owner",username:"test-owner"};
+  assert.equal((await ctx.orivaneAdminAccess(request(),env)).source,"owner");
+  assert.ok(ctx.orivaneAdminCookie(validToken).includes("HttpOnly; Secure;"));
+  const panel=fs.readFileSync("owner-panel.js","utf8");
+  assert.ok(panel.includes('await api("admin-login"'));
+  assert.ok(panel.includes('await api("admin-session")'));
+  assert.ok(!panel.includes('localStorage.getItem("orivane-secret-unlocked-v1")'));
+  assert.ok(!panel.includes('window.prompt("Enter the secret code")'));
+  checks.push({name:"Admin session rejects forged, expired and wrong-origin access",status:"pass"});
+}catch{checks.push({name:"Admin session rejects forged, expired and wrong-origin access",status:"fail"});}
 const allowedCodes=new Set(JSON.parse(worker.match(/const ORIVANE_REPORT_CODES = new Set\((\[[^\n]+\])\);/)[1]));
 check("Browser diagnostic codes match server allowlist",()=>{
   const browserCodes=JSON.parse(browser.match(/const ORIVANE_BROWSER_CODES=new Set\((\[[^\n]+\])\);/)[1]);
