@@ -37,7 +37,7 @@ function extractModelText(result) {
 
 
 /* Diagnostics: count fixed technical events only. Never persist prompts, replies, credentials or identity. */
-const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_unclosed_bold","markdown_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_render_unresolved","browser_report_upload_failed","browser_unclosed_bold","markdown_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const ORIVANE_REPORT_MODES = new Set(["fast","thinking","pro","unknown"]);
 function orivaneUnclosedBold(text,repair=false){
   let fence=null,found=false;
@@ -85,15 +85,16 @@ async function orivaneReportTable(db){
   await db.prepare("CREATE TABLE IF NOT EXISTS orivane_report_counts (day TEXT NOT NULL,code TEXT NOT NULL,mode TEXT NOT NULL,count INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(day,code,mode))").run();
 }
 async function orivaneReportRecord(env,codes,mode="unknown"){
-  if(!env.DB)return;
+  if(!env.DB)return false;
   const known=[...new Set(codes)].filter(c=>ORIVANE_REPORT_CODES.has(c));
-  if(!known.length)return;
+  if(!known.length)return false;
   const day=new Date().toISOString().slice(0,10), safeMode=ORIVANE_REPORT_MODES.has(mode)?mode:"unknown";
   try{
     await orivaneReportTable(env.DB);
     await env.DB.batch(known.map(code=>env.DB.prepare("INSERT INTO orivane_report_counts(day,code,mode,count) VALUES(?,?,?,1) ON CONFLICT(day,code,mode) DO UPDATE SET count=MIN(count+1,1000000000)").bind(day,code,safeMode)));
     await env.DB.prepare("DELETE FROM orivane_report_counts WHERE day < date('now','-30 days')").run();
-  }catch{console.warn("ORIVANE diagnostic storage unavailable");}
+  return true;
+  }catch{console.warn("ORIVANE diagnostic storage unavailable");return false;}
 }
 async function orivaneReportRead(env){
   await orivaneReportTable(env.DB);
@@ -385,7 +386,7 @@ export default {
         if(request.method==="POST"){
           const body=await request.json();
           const codes=Array.isArray(body.codes)?body.codes.slice(0,8).filter(c=>typeof c==="string"&&c.startsWith("browser_")&&ORIVANE_REPORT_CODES.has(c)):[];
-          await orivaneReportRecord(env,codes,body.mode);return json({ok:true});
+          if(!codes.length)return json({error:"No recognized diagnostic codes."},400);if(!(await orivaneReportRecord(env,codes,body.mode)))return json({error:"Diagnostic storage unavailable."},503);return json({ok:true});
         }
         return json(await orivaneReportRead(env));
       }catch{return json({error:"Could not read diagnostic report."},503);}
