@@ -122,7 +122,21 @@ check("Live replies use the same rich renderer as saved messages",()=>{
   assert.equal(window.sendMessage.__orivaneTypingWrapped,true);
   assert.ok(!/window\.addMessage\s*=/.test(source));
 });
-const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+check("Visible chat watchdog catches raw bold and missing cards",()=>{
+  const makeNode=(text,card=false)=>({
+    querySelector(selector){if(selector===".assistant-message-content")return {cloneNode(){return {textContent:text,querySelectorAll(){return [];}}}};return card?{}:null;}
+  });
+  const ctx=vm.createContext({});
+  vm.runInContext(extract(browser,"function orivaneParseCard(","function orivaneReadableReply("),ctx);
+  vm.runInContext(extract(browser,"function orivaneRenderIssues(","function orivaneCheckRenderedReply("),ctx);
+  assert.deepEqual(Array.from(ctx.orivaneRenderIssues(makeNode("**Bold**"),"**Bold**")),["raw_bold"]);
+  assert.equal(ctx.orivaneRenderIssues(makeNode("Bold"),"**Bold**").length,0);
+  assert.equal(ctx.orivaneRenderIssues(makeNode("**literal**"),"\x60**literal**\x60").length,0);
+  const raw='[ORIVANE_CARD]{"type":"clarification","question":"Which one?","options":[]}[/ORIVANE_CARD]';
+  assert.ok(ctx.orivaneRenderIssues(makeNode(raw),raw).includes("missing_card"));
+  assert.equal(ctx.orivaneRenderIssues(makeNode("",true),raw).length,0);
+});
+const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const modes=new Set(["fast","thinking","pro","unknown"]);
 let runtimeStatus="not_configured",runtime=[];
 if(process.env.ORIVANE_REPORT_TOKEN){
