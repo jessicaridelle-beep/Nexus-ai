@@ -1,10 +1,10 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:15:15.525Z",
-  "commit": "c17688d1977e0f52e440d6300ed93624925b7a7e",
+  "generatedAt": "2026-11-26T21:15:54.276Z",
+  "commit": "d82f2692311731a4c3016d7ded30cb475d96fc6e",
   "codeChecks": {
-    "passed": 27,
+    "passed": 28,
     "failed": 0,
     "checks": [
       {
@@ -113,6 +113,10 @@
       },
       {
         "name": "Visible chat watchdog catches raw bold and missing cards",
+        "status": "pass"
+      },
+      {
+        "name": "Unclosed bold detected on server and browser; literal code preserved",
         "status": "pass"
       }
     ]
