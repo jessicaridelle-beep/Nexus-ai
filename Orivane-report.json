@@ -1,0 +1,11 @@
+{
+  "name": "Orivane-report",
+  "schema": 1,
+  "generatedAt": null,
+  "codeChecks": {
+    "status": "awaiting_first_run"
+  },
+  "runtimeStatus": "not_configured",
+  "runtime": [],
+  "privacy": "Aggregate technical counts only; no private chat content or credentials."
+}
