@@ -37,10 +37,32 @@ function open(){
    content.append(grid,node("p",{class:"owner-foot"},"The AI receives your current local website settings on your messages. Shared website notes and global AI instructions are loaded securely by the Worker for every visitor."));
   }
   if(active==="Diagnostics"){
-   const area=node("div",{class:"admin-form"}),status=node("p",{class:"owner-foot"},"Download anonymous technical counts. No chat messages or API keys are stored.");
-   const download=node("button",{class:"owner-primary",type:"button"},"Download Orivane-report.json");
-   download.onclick=async()=>{download.disabled=true;status.textContent="Reading report…";try{const report=await api("orivane-report");report.localBrowser=typeof orivaneLocalReport==="function"?orivaneLocalReport():[];const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)+"\n"],{type:"application/json"}));const a=node("a",{href:url,download:"Orivane-report.json"});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);status.textContent="✓ Report exported. Share the file with your coding assistant.";}catch{status.textContent="Owner access or diagnostic storage is unavailable.";}finally{download.disabled=false;}};
-   area.append(status,download);content.append(area);
+   const area=node("div",{class:"admin-form"}),status=node("p",{class:"owner-foot",role:"status"},"Loading bot report…"),grid=node("div",{class:"owner-grid"}),details=node("div",{class:"admin-form"}),actions=node("div",{class:"admin-inline-actions"});
+   const refresh=node("button",{class:"owner-secondary",type:"button"},"Refresh report"),download=node("button",{class:"owner-primary",type:"button"},"Download Orivane-report.json");download.disabled=true;
+   let snapshot=null;
+   const safeRows=rows=>Array.isArray(rows)?rows.filter(r=>r&&typeof r.code==="string"&&/^[a-z_]{1,60}$/.test(r.code)&&Number.isSafeInteger(r.count)&&r.count>0):[];
+   function tile(label,value,description){const t=node("article",{class:"owner-tile"});t.append(node("small",{},label),node("strong",{},String(value)),node("p",{},description));grid.append(t);}
+   function count(rows,codes){return rows.filter(r=>codes.includes(r.code)).reduce((n,r)=>n+r.count,0);}
+   async function load(){
+     refresh.disabled=true;download.disabled=true;status.textContent="Loading bot report…";grid.replaceChildren();details.replaceChildren();snapshot=null;
+     const [staticResult,liveResult]=await Promise.allSettled([fetch(new URL("./Orivane-report.json",location.href),{cache:"no-store"}).then(async r=>{if(!r.ok)throw Error();const v=await r.json();if(v.name!=="Orivane-report"||!Array.isArray(v.codeChecks?.checks))throw Error();return v;}),api("orivane-report")]);
+     const build=staticResult.status==="fulfilled"?staticResult.value:null,live=liveResult.status==="fulfilled"?liveResult.value:null,local=typeof orivaneLocalReport==="function"?safeRows(orivaneLocalReport()):[],runtime=safeRows(live?.runtime);
+     const checks=build?.codeChecks?.checks||[],passed=checks.filter(c=>c.status==="pass").length,failed=checks.filter(c=>c.status==="fail").length;
+     tile("CODE CHECKS",build?passed+" passed":"Unavailable",build?failed+" failed · "+String(build.generatedAt||"Unknown date"):"Scheduled bot report could not be loaded.");
+     tile("LIVE SERVER",live?count(runtime,["reply_checked"]):"Unavailable",live?"Replies checked · last 30 days":"Owner access or report storage unavailable.");
+     tile("LOCAL BROWSER",count(local,["browser_reply_checked"]),"Replies checked on this device");
+     tile("SCHEDULED RUNTIME FEED",build?.runtimeStatus||"Unknown",build?.runtimeStatus==="received"?"Runtime feed received by scheduled bot":"Scheduled runtime feed not verified; owner live counters are separate.");
+     const groups=[["Reply / stream bot",["empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","model_failure","browser_empty_stream","browser_retry_failed","browser_reply_error"]],["Markdown bot",["markdown_unclosed_bold","browser_unclosed_bold"]],["Interactive card / rendering bot",["invalid_card","browser_invalid_card","browser_render_error","browser_render_unresolved"]],["Web / website bot",["web_unavailable","web_billing_required","web_no_results","website_unavailable"]],["Image bot",["image_failure"]],["Browser health bot",["browser_runtime_error","browser_network_error","browser_report_upload_failed"]]];
+     details.append(node("h3",{},"Bot list · recorded events"));
+     for(const [name,codes] of groups){const t=node("article",{class:"owner-tile"});t.append(node("strong",{},name),node("p",{},(live?count(runtime,codes)+" server events":"Server unavailable")+" · "+count(local,codes)+" local events"));const relevant=[...runtime,...local].filter(r=>codes.includes(r.code));for(const code of [...new Set(relevant.map(r=>r.code))])t.append(node("small",{},code.replaceAll("_"," ")+": "+count(runtime,[code])+" server / "+count(local,[code])+" local"));details.append(t);}
+     details.append(node("h3",{},"Scheduled code checks"));
+     for(const c of checks){if(typeof c.name!=="string"||!["pass","fail"].includes(c.status))continue;details.append(node("p",{class:"owner-foot"},(c.status==="pass"?"✓ ":"✗ ")+c.name));}
+     status.textContent=live?"Live server and local diagnostics loaded. Counts are events, not unique incidents.":"Live report unavailable. Local counters and any scheduled checks are shown without claiming the server is healthy.";
+     snapshot={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),codeChecks:build?.codeChecks||null,codeReportGeneratedAt:build?.generatedAt||null,runtimeStatus:live?"received":"unavailable",scheduledRuntimeStatus:build?.runtimeStatus||"unknown",runtime,localBrowser:local,privacy:"Aggregate technical counts only; no prompts, messages, credentials, or raw errors."};
+     download.disabled=false;refresh.disabled=false;
+   }
+   refresh.onclick=load;download.onclick=()=>{if(!snapshot)return;const url=URL.createObjectURL(new Blob([JSON.stringify(snapshot,null,2)+"\n"],{type:"application/json"}));const a=node("a",{href:url,download:"Orivane-report.json"});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);};
+   actions.append(refresh,download);area.append(status,actions,grid,details);content.append(area);load();
   }
   if(active==="Appearance"){
    const form=node("div",{class:"admin-form"});
