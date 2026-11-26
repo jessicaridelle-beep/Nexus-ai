@@ -23,7 +23,7 @@ async function withPage(url,fixture,fn){
   if(fixture){
    await page.route(API+"/**",async route=>{
     const req=route.request(),u=new URL(req.url());
-    const headers={"access-control-allow-origin":"*","access-control-allow-methods":"POST,GET,OPTIONS","access-control-allow-headers":"content-type"};
+    const headers={"access-control-allow-origin":new URL(url).origin,"access-control-allow-credentials":"true","access-control-allow-methods":"POST,GET,OPTIONS","access-control-allow-headers":req.headers()["access-control-request-headers"]||"content-type"};
     if(req.method()==="OPTIONS")return route.fulfill({status:204,headers});
     if(req.method()==="POST"&&!u.searchParams.get("action")){
       requests++;const res=fixture(requests,req.postDataJSON());return route.fulfill({...res,headers});
@@ -52,7 +52,7 @@ async function send(page,text){
 async function body(row){return row.locator(".assistant-message-content").innerText();}
 try{
  const {chromium}=await import("playwright");
- browser=await chromium.launch({headless:true});
+ browser=await chromium.launch({headless:true,...(process.env.ORIVANE_CHROME_PATH?{executablePath:process.env.ORIVANE_CHROME_PATH}:{})});
  server=http.createServer((req,res)=>{
    try{
     const pathname=decodeURIComponent(new URL(req.url,"http://127.0.0.1").pathname);
@@ -80,7 +80,7 @@ try{
   const row=await send(page,"Ask a clarification");
   const field=row.locator(".orivane-interactive-card input");
   await field.fill("Blue");await row.locator(".orivane-interactive-card button").click();
-  await page.waitForFunction(()=>!document.querySelector("#chatForm button[type=submit]")?.disabled&&document.querySelector("#chatContent .assistant-message:last-child")?.textContent.includes("Answer received"));
+  await page.waitForFunction(()=>!document.querySelector("#chatForm button[type=submit]")?.disabled&&Array.from(document.querySelectorAll("#chatContent .assistant-message")).at(-1)?.textContent.includes("Answer received"));
   assert.equal(count(),2);
   assert.ok(!(await body(row)).includes("ORIVANE_CARD"));
  }));
