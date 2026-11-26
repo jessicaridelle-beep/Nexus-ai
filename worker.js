@@ -45,15 +45,24 @@ function orivaneUnclosedBold(text,repair=false){
     const f=line.match(/^\s*(\x60{3,}|~{3,})/);
     if(f){if(!fence)fence=f[1];else if(f[1][0]===fence[0]&&f[1].length>=fence.length)fence=null;return line;}
     if(fence||/^\s{4,}\S|^\t/.test(line))return line;
-    const masked=line.replace(/(\x60+)(.*?)\1/g,m=>" ".repeat(m.length)).replace(/\\./g,m=>" ".repeat(m.length)).replace(/https?:\/\/[^\s<>]+/gi,m=>" ".repeat(m.length));
+    let masked=line.replace(/(\x60+)(.*?)\1/g,m=>" ".repeat(m.length)).replace(/\\./g,m=>" ".repeat(m.length)).replace(/https?:\/\/[^\s<>]+/gi,m=>" ".repeat(m.length));
+    const edits=[];
+    // Preserve all matched emphasis, including recoverable asymmetric delimiters.
+    masked=masked.replace(/(?<!\*)\*{3}[^*\n]+\*{3}(?!\*)/g,m=>" ".repeat(m.length));
+    masked=masked.replace(/(?<!\*)(\*{1,2})([^\s*](?:[^*\n]*[^\s*])?)(\*{1,2})(?!\*)/g,(m,left,body,right,index)=>{
+      if(left.length!==right.length){found=true;edits.push({start:index,end:index+m.length,value:"**"+line.slice(index+left.length,index+m.length-right.length)+"**"});}
+      return " ".repeat(m.length);
+    });
     let open=null;
     for(const run of masked.matchAll(/(?<!\*)\*{2,3}(?!\*)/g)){
       const i=run.index,n=run[0].length,before=masked[i-1]||"",after=masked[i+n]||"";
       if(open&&n===open[0].length&&before&&!/\s/.test(before)){open=null;continue;}
       if(!open&&(!before||/[\s([{:>"'—–-]/.test(before))&&after&&!/[\s*]/.test(after))open=run;
     }
-    if(!open)return line;
-    found=true;return repair?line.slice(0,open.index)+line.slice(open.index+open[0].length):line;
+    if(open){found=true;const i=line.trimEnd().length;edits.push({start:i,end:i,value:open[0]});}
+    if(!repair)return line;
+    for(const e of edits.sort((a,b)=>b.start-a.start))line=line.slice(0,e.start)+e.value+line.slice(e.end);
+    return line;
   }).join("\n");
   return {found,text:result};
 }
