@@ -201,7 +201,7 @@ if(process.env.ORIVANE_REPAIR_REPORT){
  try{
   const result=JSON.parse(fs.readFileSync(process.env.ORIVANE_REPAIR_REPORT,"utf8"));
   if(!["failed","proposed","no_changes"].includes(result.status)||!Array.isArray(result.repairs))throw Error();
-  autoRepair={status:result.status,repairs:result.repairs.filter(r=>r.kind==="cache_version"&&/^[A-Za-z0-9_-]+\.(js|css)$/.test(r.file)&&/^\d+$/.test(r.from)&&/^\d+$/.test(r.to)).slice(0,100)};
+  autoRepair={status:result.status,repairs:result.repairs.filter(r=>["cache_version","cache_missing"].includes(r.kind)&&/^[A-Za-z0-9_-]+\.(js|css)$/.test(r.file)&&(r.from==="missing"||/^\d+$/.test(r.from))&&/^\d+$/.test(r.to)).slice(0,100)};
  }catch{autoRepair={status:"unavailable",repairs:[]};}
 }
 let browserChecks={status:"not_run",passed:0,failed:0,skipped:0,checks:[]};
@@ -219,7 +219,7 @@ if(process.env.ORIVANE_BROWSER_REPORT){
   }
 }
 const failed=checks.filter(c=>c.status==="fail").length;
-const report={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:process.env.GITHUB_SHA||null,codeChecks:{passed:checks.length-failed,failed,checks},browserChecks,autoRepair,runtimeStatus,runtime,privacy:"Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",limits:"Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require authenticated read-only access. Automatic repair is limited to cache-version synchronization; other bugs require review."};
+const report={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:spawnSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).stdout?.trim()||process.env.GITHUB_SHA||null,codeChecks:{passed:checks.length-failed,failed,checks},browserChecks,autoRepair,runtimeStatus,runtime,privacy:"Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",limits:"Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require authenticated read-only access. Automatic source repair is limited to verified local cache entries and versions; other bugs require review."};
 fs.writeFileSync("Orivane-report.json",JSON.stringify(report,null,2)+"\n");
 console.log("ORIVANE code checks:",checks.length-failed,"passed;",failed,"failed. Runtime report:",runtimeStatus);
 if(failed||browserChecks.failed)process.exitCode=1;
