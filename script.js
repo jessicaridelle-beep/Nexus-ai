@@ -156,6 +156,17 @@ function orivaneParseCard(raw,streaming=false) {
   if(streaming)plain=plain.replace(/\n$/,"");
   flush();
   let visible=kept.join("").trim();
+  // Routine clarifications belong in the conversation, not a clickable menu.
+  // Keep the question and, when needed, enough context to make it answerable.
+  if(card?.type==="clarification"){
+    const question=card.question;
+    const vague=/^(?:which (?:one|option)|what (?:do you prefer|would you prefer)|please (?:choose|select)(?: one| an option)?)[?.! ]*$/i.test(question);
+    const alreadyPresent=visible.toLowerCase().includes(question.toLowerCase());
+    const detail=vague&&card.options.length?card.options.join(" / "):"";
+    if(!alreadyPresent)visible=[visible,question].filter(Boolean).join("\n\n");
+    if(detail&&!card.options.every(option=>visible.includes(option)))visible+="\n"+detail;
+    card=null;
+  }
   if(invalid&&!streaming&&!visible&&!card)visible="I couldn't display that question correctly. Please ask me to try again.";
   return {text:visible,card,invalid};
 }
