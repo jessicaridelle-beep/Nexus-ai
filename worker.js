@@ -37,11 +37,31 @@ function extractModelText(result) {
 
 
 /* Diagnostics: count fixed technical events only. Never persist prompts, replies, credentials or identity. */
-const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_unclosed_bold","markdown_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const ORIVANE_REPORT_MODES = new Set(["fast","thinking","pro","unknown"]);
+function orivaneUnclosedBold(text,repair=false){
+  let fence=null,found=false;
+  const result=String(text||"").split("\n").map(line=>{
+    const f=line.match(/^\s*(\x60{3,}|~{3,})/);
+    if(f){if(!fence)fence=f[1];else if(f[1][0]===fence[0]&&f[1].length>=fence.length)fence=null;return line;}
+    if(fence||/^\s{4,}\S|^\t/.test(line))return line;
+    const masked=line.replace(/(\x60+)(.*?)\1/g,m=>" ".repeat(m.length)).replace(/\\./g,m=>" ".repeat(m.length)).replace(/https?:\/\/[^\s<>]+/gi,m=>" ".repeat(m.length));
+    let open=null;
+    for(const run of masked.matchAll(/(?<!\*)\*{2,3}(?!\*)/g)){
+      const i=run.index,n=run[0].length,before=masked[i-1]||"",after=masked[i+n]||"";
+      if(open&&n===open[0].length&&before&&!/\s/.test(before)){open=null;continue;}
+      if(!open&&(!before||/[\s([{:>"'—–-]/.test(before))&&after&&!/[\s*]/.test(after))open=run;
+    }
+    if(!open)return line;
+    found=true;return repair?line.slice(0,open.index)+line.slice(open.index+open[0].length):line;
+  }).join("\n");
+  return {found,text:result};
+}
+
 function orivaneReplyIssues(text) {
   const value=String(text||"").trim(), issues=[];
   if(!value)return ["empty_reply"];
+  if(orivaneUnclosedBold(value).found)issues.push("markdown_unclosed_bold");
   if(/^(?:Error:\s*)?(?:The AI stream returned an empty response\.?|The AI returned an empty response\.?|The AI model did not return a response\.?|The AI model returned no text after retrying\.[\s\S]*|The response did not complete\.?|The live response was interrupted\.[\s\S]*|The AI response was interrupted\.[\s\S]*)$/i.test(value))issues.push("error_reply");
   const outside=value.split("\n").filter((line)=>!line.startsWith("> ")).join("\n");
   if(!/^\s*\x60\x60\x60/m.test(outside)&&outside.includes("[ORIVANE_CARD]")){
