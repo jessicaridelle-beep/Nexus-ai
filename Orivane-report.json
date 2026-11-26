@@ -1,11 +1,11 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:02:48.653Z",
-  "commit": "45b4a339c3b1e27eb3d3f0148a354ed4a5c021c8",
+  "generatedAt": "2026-11-26T21:03:00.547Z",
+  "commit": "5f41647b4a0aa87e458e045e1bb1acb2e0e6424b",
   "codeChecks": {
-    "passed": 21,
-    "failed": 1,
+    "passed": 22,
+    "failed": 0,
     "checks": [
       {
         "name": "JavaScript syntax: canvas.js",
@@ -45,7 +45,7 @@
       },
       {
         "name": "JavaScript syntax: owner-panel.js",
-        "status": "fail"
+        "status": "pass"
       },
       {
         "name": "JavaScript syntax: script.js",
