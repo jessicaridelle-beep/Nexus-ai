@@ -18,7 +18,8 @@ setResponseMode(responseMode);
 const emojiChoices=["😀","😂","✨","🧡","🔥","👀","🤔","🎮","🚀","😭","💀","😎","🎉","🤖","🔑"];
 function saveMemory(){if(memoryEnabled)try{localStorage.setItem(MEMORY_KEY,JSON.stringify(conversation.slice(-30)));}catch{chatNote.textContent="Local memory storage is full; chat still works.";}}
 function renderMemoryButton(){const b=document.getElementById("memoryButton");if(!b)return;b.textContent=memoryEnabled?"Memory on":"Memory off";b.classList.toggle("memory-on",memoryEnabled);b.title=memoryEnabled?"Memory is on: conversations are saved on this device. Tap to turn off and erase saved memory.":"Memory is off: tap to save conversations on this device.";}
-function appendLink(parent,url,label){const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener noreferrer";a.textContent=label||url;a.className="message-link";parent.appendChild(a);}
+function appendLink(parent,url,label){const shown=String(label||url);try{const u=new URL(String(url));if(!["http:","https:"].includes(u.protocol)||u.username||u.password)throw Error();const a=document.createElement("a");a.href=u.href;a.target="_blank";a.rel="noopener noreferrer";a.textContent=shown;a.className="message-link";parent.appendChild(a);return a;}catch{parent.append(document.createTextNode(shown));return null;}}
+function orivaneTrimURL(value){let raw=String(value).replace(/[.,!?;:]+$/,"");while(raw.endsWith(")")&&(raw.match(/\)/g)||[]).length>(raw.match(/\(/g)||[]).length)raw=raw.slice(0,-1);return raw;}
 function getGifUrlFromText(text){const urls=String(text).match(/https?:\/\/[^\s<>"']+/g)||[];return urls.map(raw=>raw.replace(/[),.!?]+$/,"")).find(raw=>{try{const u=new URL(raw),h=u.hostname.toLowerCase(),p=u.pathname.toLowerCase();return u.protocol==="https:"&&(h==="media.tenor.com"||h==="media.giphy.com"||h==="static.klipy.com"||h==="static1.klipy.com"||h==="static2.klipy.com"||(h.endsWith(".giphy.com")&&(p.endsWith(".gif")||p.endsWith(".webp")||p.endsWith(".mp4")))||(h.endsWith(".tenor.com")&&(p.endsWith(".gif")||p.endsWith(".webp")||p.endsWith(".mp4")))||(h.endsWith(".klipy.com")&&(p.endsWith(".gif")||p.endsWith(".webp")||p.endsWith(".mp4"))));}catch{return false;}})||null;}
 function orivaneArtifactButton(label,action){const b=document.createElement("button");b.type="button";b.className="orivane-artifact-button";b.textContent=label;b.addEventListener("click",action);return b;}
 function orivaneDownload(blob,name){const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
@@ -36,12 +37,12 @@ function orivaneImageLink(parent,url,label){let parsed;try{parsed=new URL(url);i
 }
 function orivaneInline(parent,text,depth=0){
  const s=String(text);if(depth>4){parent.append(document.createTextNode(s));return;}
- const pattern=/\\([\\*_[\]~])|\x60([^\x60\n]+)\x60|\*\*\*([^*\n]+)\*\*\*|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|<u>([^<\n]+)<\/u>|\*([^*\n]+)\*|(?<!\w)_([^_\n]+)_(?!\w)|(!?)\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"']+)/g;
+ const pattern=/\\([\\*_[\]~])|\x60([^\x60\n]+)\x60|\*\*\*([^*\n]+)\*\*\*|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|<u>([^<\n]+)<\/u>|\*([^*\n]+)\*|(?<!\w)_([^_\n]+)_(?!\w)|(!?)\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()<>"']+|\([^\s()<>"']*\))+)\)|(<https?:\/\/[^\s<>]+>|(?<![\w@])(?:https?:\/\/|www\.)[^\s<>"']+)/gi;
  let end=0;
  for(const m of s.matchAll(pattern)){parent.append(document.createTextNode(s.slice(end,m.index)));end=m.index+m[0].length;
  if(m[1]){parent.append(document.createTextNode(m[1]));continue;}
  if(m[11]){if(m[10])orivaneImageLink(parent,m[12],m[11]);else{try{const u=new URL(m[12]);if(u.username||u.password)throw Error();appendLink(parent,u.href,m[11]);}catch{parent.append(document.createTextNode(m[0]));}}continue;}
- if(m[13]){const raw=m[13].replace(/[.,!?;:]+$/,"").replace(/\)+$/,"");try{const u=new URL(raw);if(u.username||u.password)throw Error();appendLink(parent,u.href,raw);parent.append(document.createTextNode(m[13].slice(raw.length)));}catch{parent.append(document.createTextNode(m[0]));}continue;}
+ if(m[13]){const original=m[13],angle=original.startsWith("<")&&original.endsWith(">"),raw=angle?original.slice(1,-1):orivaneTrimURL(original);try{const u=new URL(/^www\./i.test(raw)?"https://"+raw:raw);if(u.username||u.password)throw Error();appendLink(parent,u.href,raw);if(!angle)parent.append(document.createTextNode(original.slice(raw.length)));}catch{parent.append(document.createTextNode(original));}continue;}
  const n=document.createElement(m[2]?"code":m[3]||m[4]||m[5]?"strong":m[6]?"del":m[7]?"u":"em");
  if(m[2])n.textContent=m[2];else if(m[3]){const em=document.createElement("em");orivaneInline(em,m[3],depth+1);n.append(em);}else orivaneInline(n,m[4]||m[5]||m[6]||m[7]||m[8]||m[9],depth+1);parent.append(n);}
  parent.append(document.createTextNode(s.slice(end)));
