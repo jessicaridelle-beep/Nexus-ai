@@ -1,8 +1,8 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:20:26.485Z",
-  "commit": "2cf8bef83dd282b01b2cb809c31691824f53c843",
+  "generatedAt": "2026-11-26T21:20:50.624Z",
+  "commit": "e63afa103917d9338c80f0e0fa65d6c280cdf7b9",
   "codeChecks": {
     "passed": 31,
     "failed": 0,
@@ -130,6 +130,19 @@
       {
         "name": "Report card loads scheduled and live data independently",
         "status": "pass"
+      }
+    ]
+  },
+  "browserChecks": {
+    "status": "unavailable",
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "checks": [
+      {
+        "name": "Browser test report unavailable",
+        "status": "fail",
+        "code": "report_missing"
       }
     ]
   },
