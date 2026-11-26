@@ -37,7 +37,7 @@ function extractModelText(result) {
 
 
 /* Diagnostics: count fixed technical events only. Never persist prompts, replies, credentials or identity. */
-const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const ORIVANE_REPORT_MODES = new Set(["fast","thinking","pro","unknown"]);
 function orivaneReplyIssues(text) {
   const value=String(text||"").trim(), issues=[];
