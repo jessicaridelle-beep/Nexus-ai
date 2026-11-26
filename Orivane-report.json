@@ -1,10 +1,10 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:12:57.092Z",
-  "commit": "b242ded8d2c4bf4751b1a8cd145832b1c962711d",
+  "generatedAt": "2026-11-26T21:13:07.621Z",
+  "commit": "f3dc141804f3dbcd1d277388b63f1e9936ac859d",
   "codeChecks": {
-    "passed": 25,
+    "passed": 26,
     "failed": 0,
     "checks": [
       {
@@ -105,6 +105,10 @@
       },
       {
         "name": "Clarification card hides raw protocol and accepts empty choices",
+        "status": "pass"
+      },
+      {
+        "name": "Live replies use the same rich renderer as saved messages",
         "status": "pass"
       }
     ]
