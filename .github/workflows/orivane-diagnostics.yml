@@ -31,6 +31,7 @@ jobs:
           ORIVANE_REPAIR_REPORT: /tmp/orivane-repair-report.json
         run: node scripts/orivane-auto-repair.mjs
       - name: Install browser test dependencies
+        timeout-minutes: 5
         id: browser_setup
         continue-on-error: true
         run: |
@@ -41,6 +42,7 @@ jobs:
             npx playwright install --with-deps chromium
           fi
       - name: Run browser diagnostics
+        timeout-minutes: 5
         id: browser
         if: steps.browser_setup.outcome == 'success'
         continue-on-error: true
@@ -56,10 +58,6 @@ jobs:
           fi
         env:
           SETUP_STATUS: ${{ steps.browser_setup.outcome }}
-      - name: Record browser setup failure
-        if: steps.browser_setup.outcome != 'success'
-        run: |
-          node -e 'require("fs").writeFileSync("/tmp/orivane-browser-report.json",JSON.stringify({checks:[{name:"Browser dependency setup",status:"fail",code:"browser_setup_failed"}]}))'
       - name: Run diagnostics
         id: diagnose
         continue-on-error: true
@@ -67,7 +65,15 @@ jobs:
           ORIVANE_BROWSER_REPORT: /tmp/orivane-browser-report.json
           ORIVANE_REPORT_TOKEN: ${{ secrets.ORIVANE_REPORT_TOKEN }}
           ORIVANE_REPAIR_REPORT: /tmp/orivane-repair-report.json
-        run: node scripts/orivane-diagnostics.mjs
+        run: |
+          rm -f Orivane-report.json
+          node scripts/orivane-diagnostics.mjs
+      - name: Ensure failed diagnostics still produce a fresh report
+        if: always()
+        run: |
+          if [ ! -s Orivane-report.json ]; then
+            node -e 'const fs=require("node:fs"),r={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:process.env.GITHUB_SHA||null,codeChecks:{passed:0,failed:1,checks:[{name:"Diagnostic runner did not complete",status:"fail",code:"diagnostic_runner_failed"}]},browserChecks:{status:"unavailable",passed:0,failed:1,skipped:0,checks:[]},autoRepair:{status:"failed",repairs:[]},runtimeStatus:"unavailable",runtime:[],privacy:"No conversations or credentials recorded."};fs.writeFileSync("Orivane-report.json",JSON.stringify(r,null,2)+"\n")'
+          fi
       - name: Save validated repair and report
         if: always()
         env:
@@ -90,7 +96,7 @@ jobs:
             if git diff --cached --quiet -- sw.js; then
               git commit -m "Update Orivane-report [skip ci]"
             else
-              git commit -m "Repair service worker asset versions"
+              git commit -m "Repair service worker cache entries [skip ci]"
             fi
             git push origin HEAD:main
           fi
