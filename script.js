@@ -171,10 +171,10 @@ async function orivaneGenerateImage(prompt){
     const response=await fetch(ORIVANE_API_URL+"?action=create-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
     const data=await response.json();if(!response.ok)throw Error(data.error||"Image generation failed.");
     const url=data.image_data_url;
-    if(typeof url!=="string"||url.length>6000030||!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(url))throw Error("The image service returned no usable preview.");
+    if(typeof url!=="string"||url.length>6000030||!/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(url))throw Error("The image service returned no usable preview.");
     const img=orivaneChatElement("img","");img.alt=prompt;img.src=url;
     if(typeof img.decode==="function")await img.decode();
-    const download=orivaneChatElement("a","","Download image");download.href=url;download.download="orivane-image.jpg";
+    const download=orivaneChatElement("a","","Download image");download.href=url;download.download="orivane-image."+(url.startsWith("data:image/png")?"png":url.startsWith("data:image/webp")?"webp":"jpg");
     card.append(img,download);status.textContent="✓ Image generated";return "Image generated: "+prompt;
   }catch(error){status.textContent="Image generation failed: "+String(error.message||"Try again.").slice(0,250);return "Image generation failed.";}
 }
