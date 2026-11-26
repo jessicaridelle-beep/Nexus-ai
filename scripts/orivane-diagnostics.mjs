@@ -54,6 +54,11 @@ check("Reply watchdog catches known empty and error replies",()=>{
   assert.deepEqual(checkReply("Hello! 🔑"),[]);
   assert.deepEqual(checkReply("[ORIVANE_CARD]{bad}[/ORIVANE_CARD]"),["invalid_card"]);
   assert.deepEqual(checkReply('[ORIVANE_CARD]{"type":"poll","question":"Pick","options":["A","B"]}[/ORIVANE_CARD]'),[]);
+  const clarification='[ORIVANE_CARD]{"type":"clarification","question":"Which color?","options":[]}[/ORIVANE_CARD]';
+  assert.deepEqual(checkReply(clarification),[]);
+  assert.deepEqual(checkReply("Before "+clarification+" after"),[]);
+  assert.deepEqual(checkReply("\x60\x60\x60json\n"+clarification+"\n\x60\x60\x60"),[]);
+  assert.deepEqual(checkReply("\x60\x60\x60text\n[ORIVANE_CARD] literal\n\x60\x60\x60"),[]);
 });
 check("Stream token readers handle supported model packets",()=>{
   const packets=[
