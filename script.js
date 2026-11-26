@@ -15,12 +15,50 @@ modePicker?.addEventListener("click",()=>{modeMenu.hidden=!modeMenu.hidden;modeP
 modeMenu?.querySelectorAll("[data-mode]").forEach(option=>option.addEventListener("click",()=>setResponseMode(option.dataset.mode)));
 document.addEventListener("click",event=>{if(!event.target.closest(".mode-picker-wrap")&&modeMenu&&!modeMenu.hidden){modeMenu.hidden=true;modePicker.setAttribute("aria-expanded","false");}});
 setResponseMode(responseMode);
-const emojiChoices=["😀","😂","✨","🧡","🔥","👀","🤔","🎮","🚀","😭","💀","😎","🎉","🤖"];
+const emojiChoices=["😀","😂","✨","🧡","🔥","👀","🤔","🎮","🚀","😭","💀","😎","🎉","🤖","🔑"];
 function saveMemory(){if(memoryEnabled)localStorage.setItem(MEMORY_KEY,JSON.stringify(conversation.slice(-30)));}
 function renderMemoryButton(){const b=document.getElementById("memoryButton");if(!b)return;b.textContent=memoryEnabled?"Memory on":"Memory off";b.classList.toggle("memory-on",memoryEnabled);b.title=memoryEnabled?"Memory is on: conversations are saved on this device. Tap to turn off and erase saved memory.":"Memory is off: tap to save conversations on this device.";}
 function appendLink(parent,url,label){const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener noreferrer";a.textContent=label||url;a.className="message-link";parent.appendChild(a);}
 function getGifUrlFromText(text){const urls=String(text).match(/https?:\/\/[^\s<>"']+/g)||[];return urls.map(raw=>raw.replace(/[),.!?]+$/,"")).find(raw=>{try{const u=new URL(raw),h=u.hostname.toLowerCase(),p=u.pathname.toLowerCase();return u.protocol==="https:"&&(h==="media.tenor.com"||h==="media.giphy.com"||h==="static.klipy.com"||h==="static1.klipy.com"||h==="static2.klipy.com"||(h.endsWith(".giphy.com")&&(p.endsWith(".gif")||p.endsWith(".webp")||p.endsWith(".mp4")))||(h.endsWith(".tenor.com")&&(p.endsWith(".gif")||p.endsWith(".webp")||p.endsWith(".mp4")))||(h.endsWith(".klipy.com")&&(p.endsWith(".gif")||p.endsWith(".webp")||p.endsWith(".mp4"))));}catch{return false;}})||null;}
-function renderMessageText(container,text){const url=getGifUrlFromText(text);if(!url){container.textContent=text;return;}const clean=text.replace(url,"").trim();if(clean)container.append(document.createTextNode(clean+" "));const img=document.createElement("img");img.className="chat-gif";img.src=url;img.alt="GIF";img.loading="lazy";img.onerror=()=>{img.remove();appendLink(container,url,"Open GIF ↗");};container.appendChild(img);}
+function orivaneInline(parent,text,depth=0){
+  const s=String(text);
+  if(depth>4){parent.append(document.createTextNode(s));return;}
+  const pattern=/`([^`\n]+)`|\*\*\*([^*\n]+)\*\*\*|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|<u>([^<\n]+)<\/u>|\*([^*\n]+)\*|(?<!\w)_([^_\n]+)_(?!\w)|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  let end=0;
+  for(const m of s.matchAll(pattern)){
+    parent.append(document.createTextNode(s.slice(end,m.index)));
+    const n=document.createElement(m[1]?"code":m[2]||m[3]||m[4]?"strong":m[5]?"del":m[6]?"u":m[7]||m[8]?"em":"a");
+    if(m[1])n.textContent=m[1];
+    else if(m[2]){const em=document.createElement("em");orivaneInline(em,m[2],depth+1);n.append(em);}
+    else if(m[9]){try{const url=new URL(m[10]);if(!["http:","https:"].includes(url.protocol))throw Error();n.href=url.href;n.target="_blank";n.rel="noopener noreferrer";n.className="message-link";orivaneInline(n,m[9],depth+1);}catch{parent.append(document.createTextNode(m[0]));end=m.index+m[0].length;continue;}}
+    else orivaneInline(n,m[3]||m[4]||m[5]||m[6]||m[7]||m[8],depth+1);
+    parent.append(n);end=m.index+m[0].length;
+  }
+  parent.append(document.createTextNode(s.slice(end)));
+}
+function orivaneMarkdown(container,text){
+  container.classList.add("orivane-markdown");
+  const lines=String(text).replace(/\r\n?/g,"\n").split("\n");
+  const add=(tag,body,parent=container)=>{const n=document.createElement(tag);if(body!==undefined)orivaneInline(n,body);parent.append(n);return n;};
+  const cells=s=>s.trim().replace(/^\||\|$/g,"").split("|").map(x=>x.trim());
+  const tableAt=i=>i+1<lines.length&&lines[i].includes("|")&&lines[i+1].includes("|")&&cells(lines[i+1]).every(x=>/^:?-{3,}:?$/.test(x))&&cells(lines[i]).length===cells(lines[i+1]).length;
+  const list=/^\s*(?:([-+*])|(\d+)\.)\s+(.+)$/;
+  let i=0;
+  while(i<lines.length){
+    const l=lines[i];if(!l.trim()){i++;continue;}
+    const fence=l.match(/^\s*```([\w+-]*)\s*$/);
+    if(fence){const buf=[];i++;while(i<lines.length&&!/^\s*```\s*$/.test(lines[i]))buf.push(lines[i++]);if(i<lines.length)i++;const pre=add("pre"),code=add("code",undefined,pre);code.textContent=buf.join("\n");if(fence[1])code.dataset.language=fence[1];continue;}
+    const h=l.match(/^\s*(#{1,6})\s+(.+)$/);
+    if(h){add("h"+Math.min(h[1].length+2,6),h[2]);i++;continue;}
+    if(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(l)){add("hr");i++;continue;}
+    if(tableAt(i)){const wrap=add("div");wrap.className="orivane-table-scroll";const table=add("table",undefined,wrap),head=add("thead",undefined,table),tr=add("tr",undefined,head),headers=cells(l);headers.forEach(c=>add("th",c,tr));const body=add("tbody",undefined,table);i+=2;while(i<lines.length&&lines[i].trim()&&lines[i].includes("|")&&cells(lines[i]).length===headers.length){const row=add("tr",undefined,body);cells(lines[i++]).forEach(c=>add("td",c,row));}continue;}
+    const item=l.match(list);
+    if(item){const ordered=!!item[2],node=add(ordered?"ol":"ul");if(ordered)node.start=Number(item[2]);while(i<lines.length){const m=lines[i].match(list);if(!m||!!m[2]!==ordered)break;const check=m[3].match(/^\[([ xX])\]\s+(.*)$/);if(check){const li=add("li",undefined,node),box=document.createElement("input");box.type="checkbox";box.disabled=true;box.checked=check[1]!==" ";box.setAttribute("aria-label",box.checked?"Completed":"Not completed");li.append(box,document.createTextNode(" "));orivaneInline(li,check[2]);}else add("li",m[3],node);i++;}continue;}
+    if(/^\s*>/.test(l)){const buf=[];while(i<lines.length&&/^\s*>/.test(lines[i]))buf.push(lines[i++].replace(/^\s*>\s?/,""));add("blockquote",buf.join("\n"));continue;}
+    const buf=[l];i++;while(i<lines.length&&lines[i].trim()&&!/^\s*(```|#{1,6}\s|>|(?:-{3,}|\*{3,}|_{3,})\s*$)/.test(lines[i])&&!list.test(lines[i])&&!tableAt(i))buf.push(lines[i++]);add("p",buf.join("\n"));
+  }
+}
+function renderMessageText(container,text){if(container.classList.contains("assistant-message-content")&&!/```orivane-ui\b/i.test(text)){if(/```/.test(text)||!getGifUrlFromText(text)){orivaneMarkdown(container,text);return;}}const url=getGifUrlFromText(text);if(!url){container.textContent=text;return;}const clean=text.replace(url,"").trim();if(clean)container.append(document.createTextNode(clean+" "));const img=document.createElement("img");img.className="chat-gif";img.src=url;img.alt="GIF";img.loading="lazy";img.onerror=()=>{img.remove();appendLink(container,url,"Open GIF ↗");};container.appendChild(img);}
 function addMessage(role,text,restore=false){if(role==="user"){const el=document.createElement("div");el.className="user-message";renderMessageText(el,text);content.appendChild(el);return;}
  const row=document.createElement("div");row.className="assistant-message";const icon=document.createElement("span");icon.className="message-icon";icon.textContent="O";const body=document.createElement("div");body.className="message-body";const title=document.createElement("b");title.textContent=(()=>{try{return JSON.parse(localStorage.getItem("orivane-personal-admin-v1")||"{}").assistantName||"ORIVANE"}catch{return "ORIVANE"}})()+" 🟠";const p=document.createElement("div");p.className="assistant-message-content";renderMessageText(p,text);const actions=document.createElement("div");actions.className="message-actions";const copy=document.createElement("button");copy.type="button";copy.textContent="Copy";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(text);copy.textContent="Copied!";setTimeout(()=>copy.textContent="Copy",1400);}catch{copy.textContent="Select text to copy";}});actions.append(copy);const speak=document.createElement("button");speak.type="button";speak.textContent="Read aloud";speak.addEventListener("click",()=>{if(!("speechSynthesis" in window)){speak.textContent="Not supported";return;}if(window.speechSynthesis.speaking){window.speechSynthesis.cancel();speak.textContent="Read aloud";return;}const utterance=new SpeechSynthesisUtterance(text);utterance.onend=()=>speak.textContent="Read aloud";utterance.onerror=()=>speak.textContent="Try again";speak.textContent="Stop";window.speechSynthesis.speak(utterance);});actions.append(speak);body.append(title,p,actions);row.append(icon,body);content.appendChild(row);return row;}
 function restoreMemory(){if(!memoryEnabled)return;try{const saved=JSON.parse(localStorage.getItem(MEMORY_KEY)||"[]");if(Array.isArray(saved)){saved.slice(-30).forEach(m=>{if(m&&["user","assistant"].includes(m.role)&&typeof m.content==="string"){conversation.push(m);addMessage(m.role,m.content,true);}});if(conversation.length)welcome.hidden=true;}}catch{localStorage.removeItem(MEMORY_KEY);}}
