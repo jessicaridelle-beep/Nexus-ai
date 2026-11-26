@@ -110,6 +110,18 @@ check("Clarification card hides raw protocol and accepts empty choices",()=>{
   assert.equal(ctx.orivaneParseCard(raw,true).card.type,"clarification");
   assert.equal(ctx.orivaneParseCard("[ORIVANE_CARD]{bad}[/ORIVANE_CARD]").invalid,true);
 });
+check("Live replies use the same rich renderer as saved messages",()=>{
+  const source=fs.readFileSync("control-center.js","utf8");
+  const original=()=>({rendered:true});
+  const window={addMessage:original,sendMessage:async value=>value};
+  const ctx=vm.createContext({window,tone:()=>{},$:()=>null});
+  vm.runInContext(extract(source,"function installTypingAnimation(","let themeStudio;"),ctx);
+  ctx.installTypingAnimation();
+  assert.equal(window.addMessage,original);
+  assert.equal(window.addMessage("assistant","[ORIVANE_CARD]...").rendered,true);
+  assert.equal(window.sendMessage.__orivaneTypingWrapped,true);
+  assert.ok(!/window\.addMessage\s*=/.test(source));
+});
 const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const modes=new Set(["fast","thinking","pro","unknown"]);
 let runtimeStatus="not_configured",runtime=[];
