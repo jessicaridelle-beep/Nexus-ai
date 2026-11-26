@@ -1,10 +1,10 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:13:19.205Z",
-  "commit": "9ea26e3b4c2ae9195bfcec50686850810bad2735",
+  "generatedAt": "2026-11-26T21:13:53.760Z",
+  "commit": "2161b17ca51e55be8b8d557abd8562a72e946443",
   "codeChecks": {
-    "passed": 26,
+    "passed": 27,
     "failed": 0,
     "checks": [
       {
@@ -109,6 +109,10 @@
       },
       {
         "name": "Live replies use the same rich renderer as saved messages",
+        "status": "pass"
+      },
+      {
+        "name": "Visible chat watchdog catches raw bold and missing cards",
         "status": "pass"
       }
     ]
