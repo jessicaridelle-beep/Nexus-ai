@@ -389,6 +389,41 @@ async function currentUser(request,db) {
 }
 
 
+const ORIVANE_ADMIN_COOKIE="orivane_admin_session";
+const ORIVANE_ADMIN_SECONDS=8*60*60;
+function orivaneAdminConfigured(env){
+  return typeof env.ORIVANE_ADMIN_CODE==="string"&&env.ORIVANE_ADMIN_CODE.length>=20&&env.ORIVANE_ADMIN_CODE.length<=256;
+}
+function orivaneAdminCookie(token,age=ORIVANE_ADMIN_SECONDS){
+  return ORIVANE_ADMIN_COOKIE+"="+token+"; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age="+age;
+}
+async function orivaneAdminCodeMatches(value,env){
+  if(!orivaneAdminConfigured(env)||typeof value!=="string"||value.length>256)return false;
+  const [a,b]=await Promise.all([crypto.subtle.digest("SHA-256",encoder.encode(value)),crypto.subtle.digest("SHA-256",encoder.encode(env.ORIVANE_ADMIN_CODE))]);
+  const aa=new Uint8Array(a),bb=new Uint8Array(b);let difference=0;
+  for(let i=0;i<aa.length;i++)difference|=aa[i]^bb[i];
+  return difference===0;
+}
+async function orivaneAdminTable(db){
+  await db.prepare("CREATE TABLE IF NOT EXISTS orivane_admin_sessions (token_hash TEXT PRIMARY KEY,expires_at INTEGER NOT NULL)").run();
+}
+async function orivaneAdminTokenHash(token,env){
+  const key=await crypto.subtle.importKey("raw",encoder.encode(env.ORIVANE_ADMIN_CODE),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  return toB64(await crypto.subtle.sign("HMAC",key,encoder.encode("orivane-admin-session-v1:"+token)));
+}
+async function orivaneAdminAccess(request,env){
+  if(!env.DB||request.headers.get("Origin")!==SITE_ORIGIN)return null;
+  const user=await currentUser(request,env.DB);
+  if(user?.role==="owner")return {username:user.username,source:"owner"};
+  const token=readCookie(request,ORIVANE_ADMIN_COOKIE);
+  if(!orivaneAdminConfigured(env)||!/^[A-Za-z0-9_-]{43}$/.test(token))return null;
+  await orivaneAdminTable(env.DB);
+  const hash=await orivaneAdminTokenHash(token,env);
+  const row=await env.DB.prepare("SELECT token_hash FROM orivane_admin_sessions WHERE token_hash=? AND expires_at>?").bind(hash,Math.floor(Date.now()/1000)).first();
+  return row?{username:"Admin Panel",source:"admin"}:null;
+}
+
+
 async function verifyStripeSignature(rawBody, signatureHeader, secret) {
   if (!signatureHeader || !secret) return false;
   const parts = signatureHeader.split(",").map(x => x.trim());
@@ -471,6 +506,41 @@ export default {
 
     const incomingUrl = new URL(request.url);
     const requestedAction = incomingUrl.searchParams.get("action");
+
+    if(["admin-session","admin-login","admin-logout"].includes(requestedAction)){
+      if(origin!==SITE_ORIGIN)return json({error:"Origin not allowed."},403);
+      if(!env.DB)return json({error:"Admin session storage is unavailable."},503);
+      const adminReply=(payload,status=200,cookie=null)=>new Response(JSON.stringify(payload),{status,headers:{...headers,"Content-Type":"application/json; charset=utf-8",...(cookie===null?{}:{"Set-Cookie":cookie})}});
+      try{
+        if(requestedAction==="admin-session"){
+          if(request.method!=="GET")return json({error:"Use GET for session status."},405);
+          const admin=await orivaneAdminAccess(request,env);
+          return adminReply({authenticated:!!admin,source:admin?.source||null,configured:orivaneAdminConfigured(env)});
+        }
+        if(request.method!=="POST")return json({error:"Use POST for Admin Panel login or logout."},405);
+        if(requestedAction==="admin-logout"){
+          const token=readCookie(request,ORIVANE_ADMIN_COOKIE);
+          if(orivaneAdminConfigured(env)&&/^[A-Za-z0-9_-]{43}$/.test(token)){
+            await orivaneAdminTable(env.DB);
+            await env.DB.prepare("DELETE FROM orivane_admin_sessions WHERE token_hash=?").bind(await orivaneAdminTokenHash(token,env)).run();
+          }
+          return adminReply({ok:true},200,orivaneAdminCookie("",0));
+        }
+        if(!orivaneAdminConfigured(env))return json({error:"Admin code login is not configured. The administrator must set ORIVANE_ADMIN_CODE as a private Worker secret (20–256 characters)."},503);
+        if(!(await allowRateLimit(env,request,"admin-login",5,900)))return json({error:"Too many admin login attempts. Try again later."},429);
+        let body;
+        try{body=JSON.parse(await readBoundedBody(request,2048));}catch{return json({error:"Invalid login request."},400);}
+        if(!(await orivaneAdminCodeMatches(body?.code,env)))return json({error:"Incorrect admin code."},403);
+        await orivaneAdminTable(env.DB);
+        const now=Math.floor(Date.now()/1000),token=toB64(crypto.getRandomValues(new Uint8Array(32)));
+        const prior=readCookie(request,ORIVANE_ADMIN_COOKIE);
+        if(/^[A-Za-z0-9_-]{43}$/.test(prior))await env.DB.prepare("DELETE FROM orivane_admin_sessions WHERE token_hash=?").bind(await orivaneAdminTokenHash(prior,env)).run();
+        await env.DB.prepare("DELETE FROM orivane_admin_sessions WHERE expires_at<=?").bind(now).run();
+        await env.DB.prepare("INSERT INTO orivane_admin_sessions(token_hash,expires_at) VALUES(?,?)").bind(await orivaneAdminTokenHash(token,env),now+ORIVANE_ADMIN_SECONDS).run();
+        return adminReply({ok:true,authenticated:true},200,orivaneAdminCookie(token));
+      }catch{return json({error:"Admin session service is unavailable."},503);}
+    }
+
     if(requestedAction==="support-report"){
       if(request.method!=="POST")return json({error:"Use POST to submit a support report."},405);
       if(!isAllowedSiteOrigin(origin))return json({error:"Origin not allowed."},403);
@@ -490,7 +560,7 @@ export default {
       if(!["GET","POST"].includes(request.method))return json({error:"Method not allowed."},405);
       if(!env.DB)return json({error:"Diagnostic storage is unavailable."},503);
       const tokenOK=request.method==="GET"&&((await orivaneReportTokenMatches(request,env))||(await orivaneReportOidcMatches(request)));
-      const ownerOK=!tokenOK&&isAllowedSiteOrigin(origin)&&(await currentUser(request,env.DB))?.role==="owner";
+      const ownerOK=!tokenOK&&!!(await orivaneAdminAccess(request,env));
       if(!tokenOK&&!ownerOK)return json({error:"Owner access required."},403);
       try{
         if(request.method==="POST"){
@@ -581,8 +651,8 @@ export default {
     if (requestedAction === "global-ai-settings") {
       if (origin !== SITE_ORIGIN) return json({error:"This website is not allowed to change shared AI settings."},403);
       if (!env.DB) return json({error:"Shared settings storage is unavailable."},503);
-      const user = await currentUser(request, env.DB);
-      if (!user || user.role !== "owner") return json({error:"Only the authenticated owner account can access global AI settings."},403);
+      const user = await orivaneAdminAccess(request,env);
+      if (!user) return json({error:"Unlock the Admin Panel to access Global AI settings."},403);
       try {
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS orivane_global_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT NOT NULL)").run();
         if (request.method === "GET") {
@@ -771,8 +841,8 @@ export default {
       });
       if (action === "visitor-stats") {
         if (!env.DB) return json({ error: "Visitor analytics are unavailable." }, 503);
-        const statsUser = await currentUser(request, env.DB);
-        if (!statsUser || statsUser.role !== "owner") return json({ error: "Owner access is required to view visitor analytics." }, 403);
+        const statsUser = await orivaneAdminAccess(request,env);
+        if (!statsUser) return json({ error: "Owner access is required to view visitor analytics." }, 403);
         const now = Math.floor(Date.now() / 1000);
         try {
           await env.DB.prepare("CREATE TABLE IF NOT EXISTS visitor_presence (visitor_id TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, page_views INTEGER NOT NULL DEFAULT 1)").run();
