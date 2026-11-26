@@ -37,7 +37,7 @@ function extractModelText(result) {
 
 
 /* Diagnostics: count fixed technical events only. Never persist prompts, replies, credentials or identity. */
-const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const ORIVANE_REPORT_MODES = new Set(["fast","thinking","pro","unknown"]);
 function orivaneReplyIssues(text) {
   const value=String(text||"").trim(), issues=[];
@@ -320,6 +320,24 @@ function corsHeaders(origin) {
   };
 }
 
+function orivaneImageError(error){
+  const detail=String(error?.message||error||"");
+  const code=Number(error?.status||error?.statusCode||error?.code||0);
+  if(code===402||code===429||code===3036||/\b(?:quota|neuron limit|rate.limit|billing|payment required|insufficient credits|usage limit|too many requests|daily limit)\b/i.test(detail))return {status:code===402?402:429,code:"image_quota",message:"Image generation is currently limited by the provider's quota, billing or rate limit. Your prompt is not necessarily the problem."};
+  if(code===401||code===403||/\b(?:unauthori[sz]ed|forbidden|permission denied|not entitled|not enabled|not allowed|access denied)\b/i.test(detail))return {status:503,code:"image_access",message:"The image provider rejected access. The site owner needs to check the model's availability and account permissions."};
+  if(/\b(?:safety|moderation|content policy|blocked content)\b/i.test(detail))return {status:422,code:"image_policy",message:"The image provider rejected this prompt under its safety rules. Try a different, appropriate image description."};
+  if(code===404||/\b(?:model not found|unknown model|deprecated|model unavailable|not supported)\b/i.test(detail))return {status:503,code:"image_model_unavailable",message:"The configured image model is not available. The site owner needs to check the image provider."};
+  if(code===400||/\b(?:invalid input|invalid parameter|validation error|invalid request)\b/i.test(detail))return {status:502,code:"image_request",message:"The image provider rejected ORIVANE's request. The site owner needs to check the image integration."};
+  if(code===408||code===504||/\b(?:timeout|timed out|deadline exceeded)\b/i.test(detail))return {status:504,code:"image_timeout",message:"The image provider timed out. Try again later."};
+  return {status:502,code:"image_provider_error",message:"The image provider failed to generate an image. This is a service error, not necessarily a problem with your prompt."};
+}
+function orivaneImagePayload(result){
+ const image=typeof result?.image==="string"?result.image:typeof result?.result?.image==="string"?result.result.image:"";
+ if(!image||image.length>6000000||!/^[A-Za-z0-9+/]+={0,2}$/.test(image))return null;
+ let header;try{header=atob(image.slice(0,16));}catch{return null;}
+ const mime=header.startsWith("\xff\xd8\xff")?"image/jpeg":header.startsWith("\x89PNG\r\n\x1a\n")?"image/png":header.startsWith("RIFF")&&header.slice(8,12)==="WEBP"?"image/webp":null;
+ return mime?{image_data_url:"data:"+mime+";base64,"+image,mime_type:mime,model:GIF_MODEL}:null;
+}
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -770,14 +788,15 @@ export default {
       if (/\b(?:porn(?:ography)?|nude|naked|sexual|explicit|erotic|genitals|gore|gory|dismember(?:ment)?|beheading|self[- ]?harm|suicide)\b/i.test(prompt)) return json({ error: "Please use a non-explicit, non-graphic image prompt." }, 422);
       if (!env.AI || typeof env.AI.run !== "function") return json({ error: "The image-generation service is not connected." }, 503);
       try {
-        const generated = await env.AI.run(GIF_MODEL, { prompt: "Create one polished, high-quality image. No text, captions, logos or watermarks. Subject: " + prompt, steps: 4 });
-        const image = generated && typeof generated.image === "string" ? generated.image : "";
-        if (!image || image.length > 6000000) {await orivaneReportRecord(env,["image_failure"]);return json({ error: "The image model did not return a usable image. Try a simpler prompt." }, 502);}
-        return json({ image_data_url: "data:image/jpeg;base64," + image, mime_type: "image/jpeg", model: GIF_MODEL });
+        const generated = await env.AI.run(GIF_MODEL, { prompt, steps: 4 });
+        const payload=orivaneImagePayload(generated);
+        if (!payload) {await orivaneReportRecord(env,["image_failure","image_invalid_output"]);return json({error:"The provider returned an invalid image. Please try again later.",code:"image_invalid_output"},502);}
+        return json(payload);
       } catch (error) {
-        await orivaneReportRecord(env,["image_failure"]);
-        console.error("ORIVANE image generation failed");
-        return json({ error: "ORIVANE couldn't generate that image just now. Try a shorter or simpler prompt." }, 502);
+        const failure=orivaneImageError(error);
+        await orivaneReportRecord(env,["image_failure",failure.code]);
+        console.error("ORIVANE image generation failed:",failure.code);
+        return json({error:failure.message,code:failure.code},failure.status);
       }
     }
     if (requestUrl.searchParams.get("action") === "create-gif") {
