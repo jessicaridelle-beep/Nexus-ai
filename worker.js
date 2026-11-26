@@ -35,6 +35,58 @@ function extractModelText(result) {
 }
 
 
+
+/* Diagnostics: count fixed technical events only. Never persist prompts, replies, credentials or identity. */
+const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const ORIVANE_REPORT_MODES = new Set(["fast","thinking","pro","unknown"]);
+function orivaneReplyIssues(text) {
+  const value=String(text||"").trim(), issues=[];
+  if(!value)return ["empty_reply"];
+  if(/^(?:Error:\s*)?(?:The AI stream returned an empty response\.?|The AI returned an empty response\.?|The AI model did not return a response\.?|The AI model returned no text after retrying\.[\s\S]*|The response did not complete\.?|The live response was interrupted\.[\s\S]*|The AI response was interrupted\.[\s\S]*)$/i.test(value))issues.push("error_reply");
+  const outside=value.split("\n").filter((line)=>!line.startsWith("> ")).join("\n");
+  if(!/^\s*\x60\x60\x60/m.test(outside)&&outside.includes("[ORIVANE_CARD]")){
+    const m=outside.match(/^\s*\[ORIVANE_CARD\](.{1,3500})\[\/ORIVANE_CARD\]\s*$/m);
+    try{if(!m)throw Error();const v=JSON.parse(m[1]);if(!["poll","clarification","checklist"].includes(v.type)||typeof v.question!=="string"||!v.question.trim()||v.question.length>300||!Array.isArray(v.options)||v.options.some(x=>typeof x!=="string"||!x.trim()||x.length>160)||v.options.length>(v.type==="checklist"?8:6)||new Set(v.options.map(x=>x.trim())).size<(v.type==="poll"?2:v.type==="checklist"?1:0))throw Error();}catch{issues.push("invalid_card");}
+  }
+  return issues;
+}
+function orivaneDiagnosticToken(packet) {
+  if(!packet||typeof packet!=="object")return "";
+  if(typeof packet.response==="string")return packet.response;
+  if(typeof packet.token==="string")return packet.token;
+  if(packet.type==="response.output_text.delta"&&typeof packet.delta==="string")return packet.delta;
+  const content=packet.choices?.[0]?.delta?.content;
+  if(typeof content==="string")return content;
+  if(Array.isArray(content))return content.filter(p=>p?.type==="text"||p?.type==="output_text").map(p=>typeof p.text==="string"?p.text:"").join("");
+  if(packet.type==="content_block_delta"&&packet.delta?.type==="text_delta")return typeof packet.delta.text==="string"?packet.delta.text:"";
+  return "";
+}
+async function orivaneReportTable(db){
+  await db.prepare("CREATE TABLE IF NOT EXISTS orivane_report_counts (day TEXT NOT NULL,code TEXT NOT NULL,mode TEXT NOT NULL,count INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(day,code,mode))").run();
+}
+async function orivaneReportRecord(env,codes,mode="unknown"){
+  if(!env.DB)return;
+  const known=[...new Set(codes)].filter(c=>ORIVANE_REPORT_CODES.has(c));
+  if(!known.length)return;
+  const day=new Date().toISOString().slice(0,10), safeMode=ORIVANE_REPORT_MODES.has(mode)?mode:"unknown";
+  try{
+    await orivaneReportTable(env.DB);
+    await env.DB.batch(known.map(code=>env.DB.prepare("INSERT INTO orivane_report_counts(day,code,mode,count) VALUES(?,?,?,1) ON CONFLICT(day,code,mode) DO UPDATE SET count=MIN(count+1,1000000000)").bind(day,code,safeMode)));
+    await env.DB.prepare("DELETE FROM orivane_report_counts WHERE day < date('now','-30 days')").run();
+  }catch{console.warn("ORIVANE diagnostic storage unavailable");}
+}
+async function orivaneReportRead(env){
+  await orivaneReportTable(env.DB);
+  const result=await env.DB.prepare("SELECT day,code,mode,count FROM orivane_report_counts WHERE day >= date('now','-30 days') ORDER BY day DESC,code,mode LIMIT 4000").all();
+  return {name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),retentionDays:30,runtime:(result.results||[]).filter(r=>ORIVANE_REPORT_CODES.has(r.code)&&ORIVANE_REPORT_MODES.has(r.mode)&&/^\d{4}-\d{2}-\d{2}$/.test(r.day)&&Number.isSafeInteger(r.count)&&r.count>0).map(({day,code,mode,count})=>({day,code,mode,count})),privacy:"Aggregate technical counts only; no messages, prompts, users, IPs, URLs, credentials or raw errors."};
+}
+async function orivaneReportTokenMatches(request,env){
+  const supplied=request.headers.get("Authorization")||"", expected=env.ORIVANE_REPORT_TOKEN;
+  if(typeof expected!=="string"||expected.length<32||supplied.length>512||!supplied.startsWith("Bearer "))return false;
+  const encode=new TextEncoder(), [a,b]=await Promise.all([crypto.subtle.digest("SHA-256",encode.encode(supplied.slice(7))),crypto.subtle.digest("SHA-256",encode.encode(expected))]);
+  let difference=0;const aa=new Uint8Array(a),bb=new Uint8Array(b);for(let i=0;i<aa.length;i++)difference|=aa[i]^bb[i];return difference===0;
+}
+
 const PROJECT_REPO = "jessicaridelle-beep/Nexus-ai";
 const PROJECT_SITE = "https://jessicaridelle-beep.github.io/Nexus-ai/";
 const PUBLIC_SOURCE_FILES = ["index.html","style.css","script.js","worker.js","features.js","workspace.js","gif-picker.js","gif-accessibility.js","studios.js","canvas.css","canvas.js","owner-panel.js","owner-panel.css","sw.js","manifest.json","install.js","motion.js","control-center.js","control-center.css"];
@@ -285,6 +337,21 @@ export default {
 
     const incomingUrl = new URL(request.url);
     const requestedAction = incomingUrl.searchParams.get("action");
+    if(requestedAction==="orivane-report"){
+      if(!["GET","POST"].includes(request.method))return json({error:"Method not allowed."},405);
+      if(!env.DB)return json({error:"Diagnostic storage is unavailable."},503);
+      const tokenOK=request.method==="GET"&&await orivaneReportTokenMatches(request,env);
+      const ownerOK=!tokenOK&&isAllowedSiteOrigin(origin)&&(await currentUser(request,env.DB))?.role==="owner";
+      if(!tokenOK&&!ownerOK)return json({error:"Owner access required."},403);
+      try{
+        if(request.method==="POST"){
+          const body=await request.json();
+          const codes=Array.isArray(body.codes)?body.codes.slice(0,8).filter(c=>typeof c==="string"&&c.startsWith("browser_")&&ORIVANE_REPORT_CODES.has(c)):[];
+          await orivaneReportRecord(env,codes,body.mode);return json({ok:true});
+        }
+        return json(await orivaneReportRead(env));
+      }catch{return json({error:"Could not read diagnostic report."},503);}
+    }
 
     if (requestedAction === "early-access-checkout") {
       if (request.method !== "POST") return json({ error: "Use POST to start checkout." }, 405);
@@ -705,10 +772,11 @@ export default {
       try {
         const generated = await env.AI.run(GIF_MODEL, { prompt: "Create one polished, high-quality image. No text, captions, logos or watermarks. Subject: " + prompt, steps: 4 });
         const image = generated && typeof generated.image === "string" ? generated.image : "";
-        if (!image || image.length > 6000000) return json({ error: "The image model did not return a usable image. Try a simpler prompt." }, 502);
+        if (!image || image.length > 6000000) {await orivaneReportRecord(env,["image_failure"]);return json({ error: "The image model did not return a usable image. Try a simpler prompt." }, 502);}
         return json({ image_data_url: "data:image/jpeg;base64," + image, mime_type: "image/jpeg", model: GIF_MODEL });
       } catch (error) {
-        console.error("ORIVANE image generation failed:", error && error.message ? error.message : error);
+        await orivaneReportRecord(env,["image_failure"]);
+        console.error("ORIVANE image generation failed");
         return json({ error: "ORIVANE couldn't generate that image just now. Try a shorter or simpler prompt." }, 502);
       }
     }
@@ -838,6 +906,8 @@ export default {
       }
 
       if (needsWeb) emit("search-status", {status:webSearchStatus,sources:webSources.map(x=>({title:x.title,url:x.url,description:x.snippet}))});
+      const diagnosticMode = ORIVANE_REPORT_MODES.has(body.mode)?body.mode:"unknown";
+      const toolIssues=[];if(webSearchStatus==="unavailable")toolIssues.push("web_unavailable");if(webSearchStatus==="billing-required")toolIssues.push("web_billing_required");if(webSearchStatus==="no-results")toolIssues.push("web_no_results");if(websiteVisit.status==="unavailable")toolIssues.push("website_unavailable");if(toolIssues.length)await orivaneReportRecord(env,toolIssues,diagnosticMode);
       emit("answer-started", {});
       const wantsCanvas = /\b(ui|gui|user interface|dashboard|landing page|webpage|website design|app interface|interactive prototype|canvas)\b/i.test(latestQuestion) && /\b(build|make|create|design|generate|prototype|code)\b/i.test(latestQuestion);
       const canvasInstruction = wantsCanvas
@@ -900,11 +970,12 @@ export default {
         return new Response(result, { status: 200, headers: { ...headers, "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no", "Access-Control-Expose-Headers": "X-Orivane-Search-Status, X-Orivane-Visit-Status", "X-Orivane-Search-Status": webSearchStatus, "X-Orivane-Visit-Status": websiteVisit.status } });
       }
       const reply = extractModelText(result);
+      await orivaneReportRecord(env,["reply_checked",...orivaneReplyIssues(reply)],diagnosticMode);
       if (!reply.trim()) return json({ error: "The AI model did not return a response." }, 502);
       return json({ reply, webSearchStatus, webSources:webSources.map(({title,url})=>({title,url})), websiteVisitStatus: websiteVisit.status, canvasGenerated: wantsCanvas && reply.includes("```orivane-ui"), mode: responseMode, model: activeModel });
       };
       if (body.richChat !== true || body.stream !== true) return await runChat();
-      const encoder=new TextEncoder();let cancelled=false,upstream=null;
+      const encoder=new TextEncoder();let cancelled=false,upstream=null;const diagnosticMode=ORIVANE_REPORT_MODES.has(body.mode)?body.mode:"unknown";
       const stream=new ReadableStream({
         async start(controller){
           const emit=(event,data)=>{if(!cancelled)controller.enqueue(encoder.encode("data: "+JSON.stringify({orivaneEvent:event,...data})+"\n\n"));};
@@ -912,10 +983,15 @@ export default {
             emit("request-started",{});
             const response=await runChat(emit);
             if(cancelled){await response.body?.cancel();return;}
-            if(response.headers.get("content-type")?.includes("text/event-stream")&&response.body){upstream=response.body.getReader();while(!cancelled){const part=await upstream.read();if(part.done)break;if(!cancelled)controller.enqueue(part.value);}if(!cancelled)controller.enqueue(encoder.encode("\n\n"));}
+            if(response.headers.get("content-type")?.includes("text/event-stream")&&response.body){
+              upstream=response.body.getReader();const decoder=new TextDecoder();let buffer="",sample="",hasText=false,malformed=false,overflow=false;
+              const checkLine=line=>{if(!line.startsWith("data:"))return;const raw=line.slice(5).trim();if(!raw||raw==="[DONE]")return;try{const token=orivaneDiagnosticToken(JSON.parse(raw));if(token.trim())hasText=true;if(sample.length<16000)sample+=token.slice(0,16000-sample.length);else overflow=true;}catch{malformed=true;}};
+              while(!cancelled){const part=await upstream.read();if(part.done)break;if(!cancelled)controller.enqueue(part.value);buffer+=decoder.decode(part.value,{stream:true});const lines=buffer.split("\n");buffer=lines.pop()||"";for(const line of lines)checkLine(line);if(buffer.length>262144){buffer="";malformed=true;}}
+              if(!cancelled){buffer+=decoder.decode();if(buffer.trim())checkLine(buffer);const issues=hasText?(overflow?[]:orivaneReplyIssues(sample)):["empty_stream"];if(malformed)issues.push("malformed_stream");await orivaneReportRecord(env,["reply_checked",...issues],diagnosticMode);controller.enqueue(encoder.encode("\n\n"));}
+            }
             else {const data=await response.json();if(!response.ok||!data.reply){emit("error",{message:data.error||"The AI returned no answer."});return;}emit("answer",{response:data.reply});}
             emit("done",{});
-          }catch(error){emit("error",{message:"The AI response was interrupted. Please try again."});}
+          }catch(error){if(!cancelled){await orivaneReportRecord(env,["stream_interrupted","model_failure"],diagnosticMode);emit("error",{message:"The AI response was interrupted. Please try again."});}}
           finally{try{upstream?.releaseLock();}catch{}if(!cancelled)controller.close();}
         },cancel(){cancelled=true;return upstream?.cancel();}
       });
