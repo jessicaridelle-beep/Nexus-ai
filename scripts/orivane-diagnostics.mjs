@@ -99,6 +99,17 @@ check("Streaming Markdown and readable copy formatting",()=>{
   assert.equal(ctx.orivanePlainText("\x60**literal**\x60"),"**literal**");
   assert.equal(ctx.orivanePlainText("[Read more](https://example.com)"),"Read more (https://example.com)");
 });
+check("Clarification card hides raw protocol and accepts empty choices",()=>{
+  const ctx=vm.createContext({});
+  vm.runInContext(extract(browser,"function orivaneParseCard(","function orivaneReadableReply("),ctx);
+  const question="Could you tell me what you’re referring to with “7” – a number, a device (like iPhone 7), a software version, or something else?";
+  const raw="[ORIVANE_CARD]"+JSON.stringify({type:"clarification",question,options:[]})+"[/ORIVANE_CARD]";
+  const result=ctx.orivaneParseCard(raw);
+  assert.equal(result.text,"");assert.equal(result.card.question,question);assert.equal(result.card.options.length,0);assert.equal(result.invalid,false);
+  assert.equal(ctx.orivaneParseCard(raw.slice(0,-12),true).text,"");
+  assert.equal(ctx.orivaneParseCard(raw,true).card.type,"clarification");
+  assert.equal(ctx.orivaneParseCard("[ORIVANE_CARD]{bad}[/ORIVANE_CARD]").invalid,true);
+});
 const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const modes=new Set(["fast","thinking","pro","unknown"]);
 let runtimeStatus="not_configured",runtime=[];
