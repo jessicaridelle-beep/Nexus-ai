@@ -87,6 +87,18 @@ check("Chat links are clickable and unsafe schemes rejected",()=>{
   const n=makeNode("div");assert.equal(ctx.appendLink(n,"javascript:alert(1)","bad"),null);
   assert.equal(links("https://example.com")[0].rel,"noopener noreferrer");
 });
+check("Streaming Markdown and readable copy formatting",()=>{
+  const makeNode=tag=>({tag,children:[],classList:{remove(){}},append(...items){this.children.push(...items);},appendChild(item){this.children.push(item);},replaceChildren(...items){this.children=items;}});
+  const ctx=vm.createContext({URL,document:{createElement:makeNode,createDocumentFragment:()=>makeNode("fragment"),createTextNode:text=>({tag:"#text",text})}});
+  vm.runInContext(extract(browser,"function appendLink(","function getGifUrlFromText("),ctx);
+  vm.runInContext(extract(browser,"function orivaneInline(","function orivaneMarkdown("),ctx);
+  const target=makeNode("div");ctx.orivaneStreamPreview(target,"**Bold** *italic* ~~old~~");
+  const tags=target.children[0].children.map(n=>n.tag);
+  assert.ok(tags.includes("strong"));assert.ok(tags.includes("em"));assert.ok(tags.includes("del"));
+  assert.equal(ctx.orivanePlainText("**Bold** *italic* ~~old~~"),"Bold italic old");
+  assert.equal(ctx.orivanePlainText("\x60**literal**\x60"),"**literal**");
+  assert.equal(ctx.orivanePlainText("[Read more](https://example.com)"),"Read more (https://example.com)");
+});
 const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const modes=new Set(["fast","thinking","pro","unknown"]);
 let runtimeStatus="not_configured",runtime=[];
