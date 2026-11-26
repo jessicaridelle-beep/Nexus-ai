@@ -37,7 +37,7 @@ function extractModelText(result) {
 
 
 /* Diagnostics: count fixed technical events only. Never persist prompts, replies, credentials or identity. */
-const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_render_unresolved","browser_report_upload_failed","browser_unclosed_bold","markdown_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const ORIVANE_REPORT_CODES = new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","image_quota","image_access","image_policy","image_model_unavailable","image_request","image_timeout","image_provider_error","image_invalid_output","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_render_unresolved","browser_report_upload_failed","browser_unclosed_bold","markdown_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked","support_chat","support_formatting","support_links","support_cards","support_images","support_account","support_other","support_suggestion"]);
 const ORIVANE_REPORT_MODES = new Set(["fast","thinking","pro","unknown"]);
 function orivaneUnclosedBold(text,repair=false){
   let fence=null,found=false;
@@ -464,6 +464,21 @@ export default {
 
     const incomingUrl = new URL(request.url);
     const requestedAction = incomingUrl.searchParams.get("action");
+    if(requestedAction==="support-report"){
+      if(request.method!=="POST")return json({error:"Use POST to submit a support report."},405);
+      if(!isAllowedSiteOrigin(origin))return json({error:"Origin not allowed."},403);
+      if(!env.DB)return json({error:"Support reporting is unavailable."},503);
+      try{
+        const raw=await readBoundedBody(request,1024);
+        const body=JSON.parse(raw);
+        const allowed=new Set(["support_chat","support_formatting","support_links","support_cards","support_images","support_account","support_other","support_suggestion"]);
+        if(!allowed.has(body.code))return json({error:"Choose a report category."},400);
+        if(!(await allowRateLimit(env,request,"support-report",5,600)))return json({error:"Too many reports. Try again later."},429);
+        if(!(await orivaneReportRecord(env,[body.code],body.mode)))return json({error:"Report storage unavailable."},503);
+        return json({ok:true});
+      }catch{return json({error:"Could not submit report."},400);}
+    }
+
     if(requestedAction==="orivane-report"){
       if(!["GET","POST"].includes(request.method))return json({error:"Method not allowed."},405);
       if(!env.DB)return json({error:"Diagnostic storage is unavailable."},503);
