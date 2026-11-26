@@ -99,6 +99,10 @@ function orivaneMarkdown(container,text){
     const l=lines[i];if(!l.trim()){i++;continue;}
     const fence=l.match(/^\s*\x60\x60\x60(?:file:([A-Za-z0-9._/-]+)|([\w+-]*))\s*$/);
     if(fence){const buf=[];i++;while(i<lines.length&&!/^\s*\x60\x60\x60\s*$/.test(lines[i]))buf.push(lines[i++]);const closed=i<lines.length;if(closed)i++;const value=buf.join("\n"),path=fence[1];const bar=add("div");bar.className="orivane-code-tools";const name=add("span",path||fence[2]||"Code",bar);const copy=orivaneArtifactButton("Copy code",async()=>{try{await navigator.clipboard.writeText(value);copy.textContent="Copied";setTimeout(()=>copy.textContent="Copy code",1200);}catch{copy.textContent="Select code to copy";}});bar.append(copy);if(path&&closed&&orivaneSafePath(path)&&!artifacts.has(path)){artifacts.set(path,value);bar.append(orivaneArtifactButton("Download file",()=>orivaneDownload(new Blob([value],{type:"application/octet-stream"}),path.split("/").pop())));}else if(path&&!closed)name.textContent=path+" (incomplete)";const pre=add("pre"),code=add("code",undefined,pre);code.textContent=value;if(fence[2])code.dataset.language=fence[2];continue;}
+    const flash=l.match(/^>\s*\[!FLASHCARD\]\s+(.+)$/i);
+    if(flash){const node=add("details");node.className="orivane-answer-callout orivane-callout-details";add("summary",flash[1],node);i++;while(i<lines.length&&/^\s*>/.test(lines[i]))add("p",lines[i++].replace(/^\s*>\s?/,""),node);continue;}
+    const progress=l.match(/^\[!PROGRESS\]\s+(\d{1,3})%\s+(.+)$/i);
+    if(progress&&Number(progress[1])<=100){const node=add("div");node.className="orivane-answer-callout";add("strong",progress[2]+" · "+progress[1]+"%",node);const meter=add("progress",undefined,node);meter.max=100;meter.value=Number(progress[1]);meter.setAttribute("aria-label",progress[2]);meter.style.width="100%";i++;continue;}
     const h=l.match(/^\s*(#{1,6})\s+(.+)$/);
     if(h){add("h"+Math.min(h[1].length+2,6),h[2]);i++;continue;}
     if(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(l)){add("hr");i++;continue;}
@@ -183,8 +187,8 @@ function orivaneRenderCard(row,card,preview=false){
   const title=orivaneChatElement("strong","",card.question), choices=orivaneChatElement("div","orivane-card-choices"), status=orivaneChatElement("small","orivane-card-status",preview?"Preparing question…":"");
   status.setAttribute("role","status");panel.append(tag,title,choices,status);host.append(panel);
   if(card.type==="checklist"){
-    const boxes=[];
-    const update=()=>{const count=boxes.filter(b=>b.checked).length;status.textContent=count===boxes.length?"✓ All tasks checked":count+" / "+boxes.length+" completed";};
+    const boxes=[];const meter=document.createElement("progress");meter.max=card.options.length;meter.value=0;meter.style.width="100%";meter.setAttribute("aria-label","Checklist progress");panel.insertBefore(meter,status);
+    const update=()=>{const count=boxes.filter(b=>b.checked).length;meter.value=count;status.textContent=count===boxes.length?"✓ All tasks checked":count+" / "+boxes.length+" completed";};
     for(const option of card.options){const label=orivaneChatElement("label","orivane-task-row");const box=document.createElement("input");box.type="checkbox";box.disabled=preview;box.addEventListener("change",update);boxes.push(box);label.append(box,document.createTextNode(option));choices.append(label);}
     if(!preview)update();return;
   }
