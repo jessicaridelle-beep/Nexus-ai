@@ -38,7 +38,21 @@
       ["Copy chat","Copier la discussion","Chat kopiëren","Chat kopieren","Copiar chat"],
       ["Copy failed","Échec de la copie","Kopiëren mislukt","Kopieren fehlgeschlagen","Error al copiar"],
       ["No messages yet","Aucun message","Nog geen berichten","Noch keine Nachrichten","Aún no hay mensajes"],
-      ["Draft too long","Brouillon trop long","Concept te lang","Entwurf zu lang","Borrador demasiado largo"]
+      ["Draft too long","Brouillon trop long","Concept te lang","Entwurf zu lang","Borrador demasiado largo"],
+      ["Saved replies","Réponses enregistrées","Opgeslagen antwoorden","Gespeicherte Antworten","Respuestas guardadas"],
+      ["Save reply","Enregistrer la réponse","Antwoord opslaan","Antwort speichern","Guardar respuesta"],
+      ["Reply saved","Réponse enregistrée","Antwoord opgeslagen","Antwort gespeichert","Respuesta guardada"],
+      ["No saved replies","Aucune réponse enregistrée","Geen opgeslagen antwoorden","Keine gespeicherten Antworten","Sin respuestas guardadas"],
+      ["Remove","Supprimer","Verwijderen","Entfernen","Eliminar"],
+      ["Insert into draft","Insérer dans le brouillon","In concept invoegen","In Entwurf einfügen","Insertar en borrador"],
+      ["Follow-up","Suite","Vervolgvraag","Nachfrage","Seguimiento"],
+      ["Shorter","Plus court","Korter","Kürzer","Más corto"],
+      ["More detail","Plus de détails","Meer details","Mehr Details","Más detalles"],
+      ["Give examples","Donner des exemples","Geef voorbeelden","Beispiele geben","Dar ejemplos"],
+      ["Review for errors","Vérifier les erreurs","Controleer op fouten","Auf Fehler prüfen","Revisar errores"],
+      ["Copy Markdown","Copier le Markdown","Markdown kopiëren","Markdown kopieren","Copiar Markdown"],
+      ["Jump to latest","Dernier message","Laatste bericht","Letzte Nachricht","Último mensaje"],
+      ["Saved replies stay on this device.","Les réponses restent sur cet appareil.","Antwoorden blijven op dit apparaat.","Antworten bleiben auf diesem Gerät.","Las respuestas permanecen en este dispositivo."]
     ];
     if(typeof ORIVANE_UI_MAP!=="undefined")for(const row of translations)ORIVANE_UI_MAP.set(row[0],row);
     const t=key=>typeof orivaneT==="function"?orivaneT(key):key;
@@ -89,23 +103,75 @@
       if(combined.length>5500){chatNote.textContent=t("Draft too long");return;}
       composer.value=combined;composer.dispatchEvent(new Event("input",{bubbles:true}));composer.focus();composer.setSelectionRange(combined.length,combined.length);
     }
+    const savedKey="orivane-saved-replies-v1";
+    const savedPanel=document.createElement("section");savedPanel.className="orivane-saved-replies";savedPanel.hidden=true;savedPanel.id="orivaneSavedReplies";
+    const savedList=document.createElement("div");savedList.className="orivane-saved-list";
+    const savedHint=document.createElement("small");savedHint.textContent=t("Saved replies stay on this device.");
+    const savedToggle=button("Saved replies",()=>{savedPanel.hidden=!savedPanel.hidden;savedToggle.setAttribute("aria-expanded",String(!savedPanel.hidden));if(!savedPanel.hidden)renderSaved();});
+    savedToggle.setAttribute("aria-controls",savedPanel.id);savedToggle.setAttribute("aria-expanded","false");
+    const jump=button("Jump to latest",()=>rows().at(-1)?.scrollIntoView({block:"end",behavior:"auto"}));
+    function replySource(row){
+      const raw=typeof orivaneMessageSources!=="undefined"?orivaneMessageSources.get(row):undefined;
+      if(typeof raw==="string"&&raw.trim())return row.matches(".assistant-message")?orivaneReadableReply(raw):raw;
+      return messageText(row);
+    }
+    function savedReplies(){return read(savedKey).filter(x=>x&&typeof x.id==="string"&&typeof x.text==="string"&&x.text.trim()&&x.text.length<=6000).slice(0,30);}
+    function renderSaved(){
+      const items=savedReplies();savedList.replaceChildren();
+      if(!items.length){const empty=document.createElement("p");empty.textContent=t("No saved replies");savedList.append(empty);return;}
+      for(const item of items){
+        const entry=document.createElement("article");entry.className="orivane-saved-entry";
+        const preview=document.createElement("p");preview.textContent=item.text.length>280?item.text.slice(0,280)+"…":item.text;
+        const tools=document.createElement("div");tools.className="orivane-local-actions";
+        const c=button("Copy",()=>copy(item.text,c));
+        tools.append(c,button("Insert into draft",()=>insertDraft(item.text.slice(0,1800))),button("Remove",()=>{try{write(savedKey,savedReplies().filter(x=>x.id!==item.id));renderSaved();}catch{chatNote.textContent="Saved reply could not be removed.";}}));
+        entry.append(preview,tools);savedList.append(entry);
+      }
+    }
+    function saveReply(row,b){
+      const value=replySource(row).trim().slice(0,6000);if(!value)return;
+      try{
+        const items=savedReplies();
+        if(!items.some(x=>x.text===value)){
+          if(items.length>=30){chatNote.textContent="Saved replies are full. Remove one first.";return;}
+          items.unshift({id:globalThis.crypto?.randomUUID?.()||String(Date.now())+"-"+String(Math.random()).slice(2),text:value});
+          write(savedKey,items);
+        }
+        b.textContent=t("Reply saved");setTimeout(()=>{if(b.isConnected)b.textContent=t("Save reply");},1300);
+        if(!savedPanel.hidden)renderSaved();
+      }catch{chatNote.textContent="Saved reply could not be stored on this device.";}
+    }
+    function followUp(row){
+      const group=document.createElement("span");group.className="orivane-followup";
+      const menu=document.createElement("span");menu.className="orivane-followup-menu";menu.hidden=true;
+      const toggle=button("Follow-up",()=>{menu.hidden=!menu.hidden;toggle.setAttribute("aria-expanded",String(!menu.hidden));});
+      toggle.setAttribute("aria-expanded","false");
+      const actions=[["Shorter","Make this reply shorter while keeping the main points."],["More detail","Expand this reply with useful details."],["Give examples","Give practical examples that explain this reply."],["Review for errors","Review this reply for possible errors or unsupported claims. State uncertainty clearly."]];
+      for(const [label,prompt] of actions)menu.append(button(label,()=>{
+        const value=replySource(row).trim().slice(0,1800);if(value)insertDraft(prompt+"\n\nReply to review:\n"+value.split("\n").map(line=>"> "+line).join("\n"));
+        menu.hidden=true;toggle.setAttribute("aria-expanded","false");
+      }));
+      group.append(toggle,menu);return group;
+    }
+    savedPanel.append(savedHint,savedList);
     function decorate(){
       for(const row of rows()){
         if(row.querySelector(".orivane-local-actions"))continue;
         const isUser=row.matches(".user-message"),host=isUser?row:row.querySelector(".message-actions");if(!host)continue;
         // An empty assistant row is the live stream placeholder, not a finished message.
-        if(!isUser&&!messageText(row))continue;
+        if(!isUser&&!replySource(row).trim())continue;
         const group=document.createElement("span");group.className="orivane-local-actions";
         const text=()=>messageText(row);
         if(isUser){const copyButton=button("Copy",()=>copy(text(),copyButton));group.append(copyButton,button("Reuse prompt",()=>insertDraft(text())));}
         group.append(button("Quote",()=>{const value=text();if(value)insertDraft(value.slice(0,1200).split("\n").map(line=>"> "+line).join("\n")+"\n");}));
+        if(!isUser){const save=button("Save reply",()=>saveReply(row,save));const md=button("Copy Markdown",()=>copy(replySource(row),md));group.append(save,md,followUp(row));}
         host.append(group);
       }
     }
     function schedule(){if(frame)return;frame=requestAnimationFrame(()=>{frame=0;decorate();if(!panel.hidden)search();});}
-    panel.append(field,counter,prev,next,close);toolbar.append(find,copyChat,panel);chat.before(toolbar);
+    panel.append(field,counter,prev,next,close);toolbar.append(find,copyChat,savedToggle,jump,panel,savedPanel);chat.before(toolbar);
     new MutationObserver(schedule).observe(chat,{childList:true,subtree:true,characterData:true});
-    new MutationObserver(()=>{field.placeholder=t("Search messages…");field.setAttribute("aria-label",field.placeholder);for(const b of [...toolbar.querySelectorAll("[data-chat-tool-label]"),...chat.querySelectorAll("[data-chat-tool-label]")])b.textContent=t(b.dataset.chatToolLabel);if(!panel.hidden)search();}).observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
+    new MutationObserver(()=>{field.placeholder=t("Search messages…");field.setAttribute("aria-label",field.placeholder);for(const b of [...toolbar.querySelectorAll("[data-chat-tool-label]"),...chat.querySelectorAll("[data-chat-tool-label]")])b.textContent=t(b.dataset.chatToolLabel);if(!panel.hidden)search();savedHint.textContent=t("Saved replies stay on this device.");if(!savedPanel.hidden)renderSaved();}).observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
     $("newChat")?.addEventListener("click",closeSearch);
     decorate();
   }
