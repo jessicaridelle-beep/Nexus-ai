@@ -178,28 +178,31 @@ check("GitHub report identity rejects wrong repository, workflow and expired cla
  for(const bad of [{repository_id:"0"},{workflow_ref:"wrong"},{ref:"refs/heads/other"},{event_name:"pull_request"},{aud:"wrong"},{exp:now-1}])assert.equal(ctx.orivaneReportClaimsValid({...claims,...bad},now),false);
 });
 const modes=new Set(["fast","thinking","pro","unknown"]);
-let runtimeStatus="not_configured",runtime=[];
-let runtimeToken=process.env.ORIVANE_REPORT_TOKEN||"";
-if(!runtimeToken&&process.env.ACTIONS_ID_TOKEN_REQUEST_URL&&process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN){
+let runtimeStatus="not_configured",runtime=[],runtimeDetail="no_credentials";
+async function readRuntime(token,method){
+ try{
+   const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=orivane-report",{headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(15000),redirect:"error"});
+   if(!response.ok){runtimeStatus="unavailable";runtimeDetail=method+"_http_"+response.status;return false;}
+   const result=await response.json();
+   if(result.name!=="Orivane-report"||result.schema!==1||!Array.isArray(result.runtime)){runtimeStatus="unavailable";runtimeDetail=method+"_invalid_response";return false;}
+   runtime=result.runtime.slice(0,4000).filter(r=>r&&allowedCodes.has(r.code)&&modes.has(r.mode)&&/^\d{4}-\d{2}-\d{2}$/.test(r.day)&&Number.isSafeInteger(r.count)&&r.count>0).map(({day,code,mode,count})=>({day,code,mode,count}));
+   runtimeStatus="received";runtimeDetail=method+"_verified";return true;
+ }catch{runtimeStatus="unavailable";runtimeDetail=method+"_network_error";return false;}
+}
+const legacyToken=process.env.ORIVANE_REPORT_TOKEN||"";
+if(legacyToken)await readRuntime(legacyToken,"legacy");
+if(runtimeStatus!=="received"&&process.env.ACTIONS_ID_TOKEN_REQUEST_URL&&process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN){
  try{
    const url=new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);
    url.searchParams.set("audience","orivane-diagnostics-read");
    const response=await fetch(url,{headers:{Authorization:"Bearer "+process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN},redirect:"error",signal:AbortSignal.timeout(10000)});
-   if(!response.ok)throw Error();
-   const data=await response.json();
-   if(typeof data.value!=="string"||data.value.length>16000)throw Error();
-   runtimeToken=data.value;
- }catch{runtimeStatus="authentication_unavailable";}
-}
-if(runtimeToken){
- try{
-   const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=orivane-report",{headers:{Authorization:"Bearer "+runtimeToken},signal:AbortSignal.timeout(15000),redirect:"error"});
-   if(!response.ok)throw Error();
-   const result=await response.json();
-   if(result.name!=="Orivane-report"||result.schema!==1||!Array.isArray(result.runtime))throw Error();
-   runtime=result.runtime.slice(0,4000).filter(r=>r&&allowedCodes.has(r.code)&&modes.has(r.mode)&&/^\d{4}-\d{2}-\d{2}$/.test(r.day)&&Number.isSafeInteger(r.count)&&r.count>0).map(({day,code,mode,count})=>({day,code,mode,count}));
-   runtimeStatus="received";
- }catch{runtimeStatus="unavailable";}
+   if(!response.ok){runtimeStatus="authentication_unavailable";runtimeDetail="oidc_token_http_"+response.status;}
+   else {
+    const data=await response.json();
+    if(typeof data.value!=="string"||data.value.length>16000)throw Error();
+    await readRuntime(data.value,"oidc");
+   }
+ }catch{runtimeStatus="authentication_unavailable";runtimeDetail="oidc_token_error";}
 }
 let autoRepair={status:"not_run",repairs:[]};
 if(process.env.ORIVANE_REPAIR_REPORT){
@@ -216,7 +219,7 @@ if(process.env.ORIVANE_BROWSER_REPORT){
     if(!Array.isArray(browserReport.checks)||!browserReport.checks.length)throw Error();
     const results=browserReport.checks.slice(0,100).map(c=>{
       if(!c||typeof c.name!=="string"||!["pass","fail","skip"].includes(c.status))throw Error();
-      return {name:c.name.slice(0,180),status:c.status,...(typeof c.code==="string"&&/^[a-z_]+$/.test(c.code)?{code:c.code}:{})};
+      return {name:c.name.slice(0,180),status:c.status,...(typeof c.code==="string"&&/^[a-z_]+$/.test(c.code)?{code:c.code}:{}),...(typeof c.stage==="string"&&/^[a-z_]{1,60}$/.test(c.stage)?{stage:c.stage}:{})};
     });
     browserChecks={status:"completed",passed:results.filter(c=>c.status==="pass").length,failed:results.filter(c=>c.status==="fail").length,skipped:results.filter(c=>c.status==="skip").length,checks:results};
   }catch{
@@ -224,7 +227,7 @@ if(process.env.ORIVANE_BROWSER_REPORT){
   }
 }
 const failed=checks.filter(c=>c.status==="fail").length;
-const report={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:spawnSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).stdout?.trim()||process.env.GITHUB_SHA||null,codeChecks:{passed:checks.length-failed,failed,checks},browserChecks,autoRepair,runtimeStatus,runtime,privacy:"Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",limits:"Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require authenticated read-only access. Automatic source repair is limited to verified local cache entries and versions; other bugs require review."};
+const report={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:spawnSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).stdout?.trim()||process.env.GITHUB_SHA||null,codeChecks:{passed:checks.length-failed,failed,checks},browserChecks,autoRepair,runtimeStatus,runtimeDetail,runtime,privacy:"Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",limits:"Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require authenticated read-only access. Automatic source repair is limited to verified local cache entries and versions; other bugs require review."};
 fs.writeFileSync("Orivane-report.json",JSON.stringify(report,null,2)+"\n");
 console.log("ORIVANE code checks:",checks.length-failed,"passed;",failed,"failed. Runtime report:",runtimeStatus);
 if(failed||browserChecks.failed)process.exitCode=1;
