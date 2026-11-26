@@ -7,7 +7,7 @@ const API="https://nexus-ai-api.jessicaridelle.workers.dev/",KEY="orivane-person
 const defaults={appName:"ORIVANE",assistantName:"ORIVANE",accent:"#ff8a32",welcome:"Where will your curiosity take you?",instructions:"",defaultMode:"fast",model:"auto",temperature:.6,maxTokens:1200,research:false,websiteNotes:""};
 const $=id=>document.getElementById(id);
 const read=()=>{try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch{return {...defaults}}};
-let cfg=read(),overlay=null,globalData={instructions:"",changeLog:""};
+let cfg=read(),overlay=null,globalData={instructions:"",changeLog:""},refreshOpenPanel=null;
 function node(tag,attrs={},txt){const n=document.createElement(tag);for(const [k,v] of Object.entries(attrs)){if(k==="class")n.className=v;else n.setAttribute(k,v)}if(txt!==undefined)n.textContent=txt;return n}
 function input(parent,label,type,value,attrs={}){const l=node("label",{class:"admin-field"});l.append(node("span",{},label));const x=node(type==="textarea"?"textarea":"input",type==="textarea"?attrs:{type,...attrs});x.value=value;l.append(x);parent.append(l);return x}
 function recordChange(summary){try{const list=JSON.parse(localStorage.getItem(CHANGE_KEY)||"[]");list.unshift({at:new Date().toISOString(),summary:String(summary).slice(0,220)});localStorage.setItem(CHANGE_KEY,JSON.stringify(list.slice(0,20)))}catch{}}
@@ -21,7 +21,7 @@ function apply(){
 async function api(action,options={}){const r=await fetch(API+"?action="+encodeURIComponent(action),{credentials:"include",cache:"no-store",...options});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||"Request failed ("+r.status+").");return d}
 async function ownerStatus(){const d=await api("auth-me");const user=d.authenticated?d.user:null;if(user?.role==="owner")return {user,ownerInfo:null};let ownerInfo=null;try{ownerInfo=await api("auth-owner-status")}catch{}return {user,ownerInfo}}
 function open(){
- if(overlay){overlay.hidden=false;return}
+ if(overlay){overlay.hidden=false;refreshOpenPanel?.();return}
  overlay=node("div",{class:"owner-overlay"});const card=node("section",{class:"owner-card admin-card",role:"dialog","aria-modal":"true"});
  const close=node("button",{class:"owner-close",type:"button","aria-label":"Close"},"×");close.onclick=()=>overlay.hidden=true;
  const head=node("div",{class:"owner-head"}),intro=node("div");
@@ -177,10 +177,20 @@ function open(){
  }
  async function renderGlobal(){
   const form=node("div",{class:"admin-form"});
-  content.append(node("p",{class:"owner-foot"},"Global AI controls are available inside this Admin Panel. No separate account or sign-in is required. Changes apply to every visitor."));
+  content.append(node("p",{class:"owner-foot"},"Global AI uses your existing ORIVANE owner session. Changes apply to every visitor."));
   const status=node("p",{class:"owner-status"},"Loading shared AI settings…");content.append(status);
   try{
+   const auth=await api("auth-me");
+   if(active!=="Global AI"||!status.isConnected)return;
+   if(!auth.authenticated||auth.user?.role!=="owner"){
+    status.textContent=auth.authenticated?"This account does not have the owner role. Sign in with the owner account.":"Sign in to your ORIVANE owner account to access Global AI.";
+    const signIn=node("button",{class:"owner-primary",type:"button"},auth.authenticated?"Open account settings":"Sign in to owner account");
+    signIn.onclick=()=>{overlay.hidden=true;$("profileOpen")?.click();if(!auth.authenticated&&typeof setProfileMode==="function")setProfileMode("login");};
+    const retry=node("button",{class:"header-action",type:"button"},"↻ Check access again");retry.onclick=render;
+    content.append(signIn,retry);return;
+   }
    const data=await api("global-ai-settings");
+   if(active!=="Global AI"||!status.isConnected)return;
    globalData={instructions:data.instructions||"",changeLog:data.changeLog||""};
    const instructions=input(form,"Global AI instructions","textarea",globalData.instructions,{rows:"6",maxlength:"4000",placeholder:"Set ORIVANE's shared tone, response rules, and priorities for everyone…"});
    const notes=input(form,"Shared website change log / site notes","textarea",globalData.changeLog,{rows:"7",maxlength:"8000",placeholder:"Describe website changes, new features, removed features, important UI behaviour, and how they work. ORIVANE receives these notes in every visitor's chat."});
@@ -190,6 +200,7 @@ function open(){
    form.append(note,save);content.append(form);status.textContent="Global AI is ready · Admin Panel access";
   }catch(e){status.textContent=e.message;status.classList.add("error")}
 }
+ refreshOpenPanel=()=>{if(active==="Global AI")render();};
  render();
 }
 async function refreshVisitors(){try{let id=localStorage.getItem("orivane-anon-visitor-id");if(!id){id=crypto.randomUUID();localStorage.setItem("orivane-anon-visitor-id",id)}await fetch(API+"?action=visitor-heartbeat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({visitorId:id})});const r=await fetch(API+"?action=visitor-stats",{credentials:"include",cache:"no-store"});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Error(d.error||("Visitor stats request failed ("+r.status+")."));if($("visitorActive"))$("visitorActive").textContent=d.activeNow??"—";if($("visitorDay"))$("visitorDay").textContent=d.visits24h??"—"}catch{if($("visitorActive"))$("visitorActive").textContent="Unavailable";if($("visitorDay"))$("visitorDay").textContent="Unavailable"}}
@@ -197,7 +208,8 @@ function heartbeat(){let id=localStorage.getItem("orivane-anon-visitor-id");if(!
 apply();
 let ownerAuthRenderVersion=0;
 function installOwnerEntry(){
- const unlocked=localStorage.getItem("orivane-secret-unlocked-v1")==="1";
+ const verifiedOwner=typeof signedInUser!=="undefined"&&signedInUser?.role==="owner";
+ const unlocked=verifiedOwner||localStorage.getItem("orivane-secret-unlocked-v1")==="1";
  const profile=$("profileOpen"),sidebar=$("sidebar");
  if(!unlocked){
   $("adminPanelOpen")?.remove();$("adminPanelSidebarOpen")?.remove();
@@ -242,6 +254,6 @@ function installSecretUnlock(){
 
 installSecretUnlock();
 installOwnerEntry();
-window.addEventListener("orivane-auth-updated",installOwnerEntry);
+window.addEventListener("orivane-auth-updated",()=>{installOwnerEntry();if(overlay&&!overlay.hidden)refreshOpenPanel?.();});
 heartbeat();setInterval(heartbeat,30000);
 })();
