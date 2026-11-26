@@ -4,7 +4,8 @@ import http from "node:http";
 import assert from "node:assert/strict";
 const reportPath=process.env.ORIVANE_BROWSER_REPORT||"/tmp/orivane-browser-report.json";
 const checks=[];
-const check=async(name,fn)=>{try{await fn();checks.push({name,status:"pass"});}catch(e){checks.push({name,status:"fail",code:e?.name==="TimeoutError"?"timeout":"assertion_or_browser_error"});}};
+let stage="start";
+const check=async(name,fn)=>{stage="start";try{await fn();checks.push({name,status:"pass"});}catch(e){const code=e?.name==="TimeoutError"?"timeout":e?.name==="AssertionError"?"assertion_failed":"browser_error";checks.push({name,status:"fail",code,stage});console.log("Failed browser check:",name,code,stage);}};
 const root=process.cwd();
 const mime={".html":"text/html",".js":"application/javascript",".css":"text/css",".json":"application/json",".svg":"image/svg+xml",".png":"image/png"};
 let browser,server;
@@ -32,22 +33,23 @@ async function withPage(url,fixture,fn){
    });
    await page.route("**/*",route=>{const u=new URL(route.request().url());if(u.origin===new URL(url).origin||u.origin===API)return route.fallback();return route.abort();});
   }
-  await page.goto(url,{waitUntil:"domcontentloaded",timeout:30000});
-  await page.locator("#promptInput").waitFor({state:"visible"});
+  stage="page_load";await page.goto(url,{waitUntil:"domcontentloaded",timeout:30000});
+  stage="composer_ready";await page.locator("#promptInput").waitFor({state:"visible"});
   await fn(page,()=>requests);
-  assert.equal(errors.length,0,"uncaught browser JavaScript error");
+  stage="page_error_check";assert.equal(errors.length,0,"uncaught browser JavaScript error");
  }finally{await context.close();}
 }
 async function send(page,text){
  const rows=page.locator("#chatContent .assistant-message:not(.orivane-typing)");
  const before=await rows.count();
- await page.locator("#promptInput").fill(text);
- await page.locator(submitSelector).click();
+ stage="fill_prompt";await page.locator("#promptInput").fill(text);
+ stage="submit_prompt";await page.locator(submitSelector).click();
+ stage="wait_reply";
  await page.waitForFunction(({before,selector})=>{
    const rows=document.querySelectorAll("#chatContent .assistant-message:not(.orivane-typing)");
    return rows.length>before&&!document.querySelector(selector)?.disabled;
  },{before,selector:submitSelector},{timeout:65000});
- return rows.last();
+ stage="reply_rendered";return rows.last();
 }
 async function body(row){return row.locator(".assistant-message-content").innerText();}
 try{
@@ -65,24 +67,27 @@ try{
  const local="http://127.0.0.1:"+server.address().port+"/";
  await check("Browser: typed streamed reply renders bold, italics, and clickable link",()=>withPage(local,()=>sse("**Bold** and *italic*. [Example](https://example.com/)"),async page=>{
   const row=await send(page,"Formatting test");
-  assert.equal(await row.locator(".assistant-message-content strong").innerText(),"Bold");
-  assert.equal(await row.locator(".assistant-message-content em").innerText(),"italic");
-  assert.equal(await row.locator(".assistant-message-content a").getAttribute("href"),"https://example.com/");
+  stage="bold_render";assert.equal(await row.locator(".assistant-message-content strong").innerText(),"Bold");
+  stage="italic_render";assert.equal(await row.locator(".assistant-message-content em").innerText(),"italic");
+  stage="link_render";assert.equal(await row.locator(".assistant-message-content a").getAttribute("href"),"https://example.com/");
   assert.ok(!(await body(row)).includes("**"));
  }));
  await check("Browser: unfinished bold is repaired and reported",()=>withPage(local,()=>json("Here is **bold..."),async page=>{
   const row=await send(page,"Unfinished markup test");
-  assert.ok((await body(row)).includes("bold..."));assert.ok(!(await body(row)).includes("**"));
+  stage="unfinished_bold_render";assert.ok((await body(row)).includes("bold..."));assert.ok(!(await body(row)).includes("**"));assert.equal(await row.locator(".assistant-message-content strong").innerText(),"bold...");
   const events=await page.evaluate(()=>JSON.parse(localStorage.getItem("orivane-report-local-v1")||"[]"));
-  assert.ok(events.some(e=>e.code==="browser_unclosed_bold"&&e.count>0));
+  stage="unfinished_bold_report";assert.ok(events.some(e=>e.code==="browser_unclosed_bold"&&e.count>0));
  }));
  await check("Browser: clarification card appears without refreshing and submits typed answer",()=>withPage(local,n=>json(n===1?card("clarification","Which color?",[]):"Answer received"),async(page,count)=>{
   const row=await send(page,"Ask a clarification");
-  const field=row.locator(".orivane-interactive-card input");
-  await field.fill("Blue");await row.locator(".orivane-interactive-card button").click();
+  stage="clarification_render";const field=row.locator(".orivane-interactive-card input");
+  await field.fill("Blue");stage="clarification_submit";await row.locator(".orivane-interactive-card button").click();
   await page.waitForFunction(()=>!document.querySelector("#chatForm button[type=submit]")?.disabled&&Array.from(document.querySelectorAll("#chatContent .assistant-message")).at(-1)?.textContent.includes("Answer received"));
   assert.equal(count(),2);
   assert.ok(!(await body(row)).includes("ORIVANE_CARD"));
+ }));
+ await check("Browser: ordinary clarification stays plain text",()=>withPage(local,()=>json("Which color?"),async page=>{
+  const row=await send(page,"Ask a normal question");assert.equal(await body(row),"Which color?");assert.equal(await row.locator(".orivane-interactive-card").count(),0);
  }));
  await check("Browser: poll and checklist controls work without refresh",()=>withPage(local,n=>json(n===1?card("poll","Choose",["Blue","Green"]):card("checklist","Tasks",["One","Two"])),async(page,count)=>{
   const row=await send(page,"Make a poll");
@@ -99,9 +104,9 @@ try{
  }));
  await check("Browser: inline code and file fences stay literal",()=>withPage(local,()=>json("Example: \x60**literal**\x60\n\n\x60\x60\x60file:example.txt\n**unchanged**\n\x60\x60\x60"),async page=>{
   const row=await send(page,"Code test");
-  assert.equal(await row.locator(".assistant-message-content p code").innerText(),"**literal**");
-  assert.ok((await row.locator(".assistant-message-content pre code").innerText()).includes("**unchanged**"));
-  assert.ok(await row.getByRole("button",{name:"Download file"}).count());
+  stage="inline_code_render";assert.equal(await row.locator(".assistant-message-content p code").innerText(),"**literal**");
+  stage="file_code_render";assert.ok((await row.locator(".assistant-message-content pre code").innerText()).includes("**unchanged**"));
+  stage="file_download_control";assert.equal(await row.getByRole("button",{name:"Download file",exact:true}).count(),1);
  }));
  if(process.env.ORIVANE_LIVE_TEST==="true"){
   await check("Live: deployed ORIVANE receives a typed prompt and renders its reply",()=>withPage(LIVE,null,async page=>{
