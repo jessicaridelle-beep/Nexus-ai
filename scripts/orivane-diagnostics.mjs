@@ -47,7 +47,7 @@ function extract(source,start,end){
 }
 check("Reply watchdog catches known empty and error replies",()=>{
   const ctx=vm.createContext({});
-  vm.runInContext(extract(worker,"function orivaneReplyIssues(","function orivaneDiagnosticToken("),ctx);
+  vm.runInContext(extract(worker,"function orivaneUnclosedBold(","function orivaneDiagnosticToken("),ctx);
   const checkReply=text=>Array.from(ctx.orivaneReplyIssues(text));
   assert.deepEqual(checkReply(""),["empty_reply"]);
   assert.deepEqual(checkReply("The AI stream returned an empty response."),["error_reply"]);
@@ -128,7 +128,7 @@ check("Visible chat watchdog catches raw bold and missing cards",()=>{
   });
   const ctx=vm.createContext({});
   vm.runInContext(extract(browser,"function orivaneParseCard(","function orivaneReadableReply("),ctx);
-  vm.runInContext(extract(browser,"function orivaneRenderIssues(","function orivaneCheckRenderedReply("),ctx);
+  vm.runInContext(extract(browser,"function orivaneUnclosedBold(","function orivaneCheckRenderedReply("),ctx);
   assert.deepEqual(Array.from(ctx.orivaneRenderIssues(makeNode("**Bold**"),"**Bold**")),["raw_bold"]);
   assert.equal(ctx.orivaneRenderIssues(makeNode("Bold"),"**Bold**").length,0);
   assert.equal(ctx.orivaneRenderIssues(makeNode("**literal**"),"\x60**literal**\x60").length,0);
@@ -136,7 +136,21 @@ check("Visible chat watchdog catches raw bold and missing cards",()=>{
   assert.ok(ctx.orivaneRenderIssues(makeNode(raw),raw).includes("missing_card"));
   assert.equal(ctx.orivaneRenderIssues(makeNode("",true),raw).length,0);
 });
-const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+check("Unclosed bold detected on server and browser; literal code preserved",()=>{
+  for(const [source,end] of [[worker,"function orivaneReplyIssues("],[browser,"function orivaneRenderIssues("]]){
+    const ctx=vm.createContext({});
+    vm.runInContext(extract(source,"function orivaneUnclosedBold(",end),ctx);
+    for(const [input,found,expected] of [["**bold...",true,"bold..."],["**bold**",false,"**bold**"],["**good** then **unfinished",true,"**good** then unfinished"],["\x60**literal\x60",false,"\x60**literal\x60"],["\\**literal",false,"\\**literal"],["2**3",false,"2**3"],["\x60\x60\x60\n**code\n\x60\x60\x60",false,"\x60\x60\x60\n**code\n\x60\x60\x60"]]){
+      const r=ctx.orivaneUnclosedBold(input,true);assert.equal(r.found,found);assert.equal(r.text,expected);
+    }
+  }
+  const ctx=vm.createContext({});
+  vm.runInContext(extract(worker,"function orivaneUnclosedBold(","function orivaneDiagnosticToken("),ctx);
+  assert.ok(ctx.orivaneReplyIssues("**bold...").includes("markdown_unclosed_bold"));
+  assert.equal(ctx.orivaneReplyIssues("**bold**").includes("markdown_unclosed_bold"),false);
+  assert.ok(browser.includes('codes.push("browser_unclosed_bold")'));
+});
+const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_unclosed_bold","markdown_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 const modes=new Set(["fast","thinking","pro","unknown"]);
 let runtimeStatus="not_configured",runtime=[];
 if(process.env.ORIVANE_REPORT_TOKEN){
