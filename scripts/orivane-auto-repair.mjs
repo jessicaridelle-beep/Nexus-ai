@@ -14,7 +14,15 @@ export function synchronizeCache(html,sw,exists=()=>true){
   if(!exists(name))throw Error("Local asset missing");
   const re=new RegExp('(new URL\\("\\./'+name.replace(".","\\.")+'\\?v=)(\\d+)(".*, BASE\\))','g');
   const matches=[...updated.matchAll(re)];
-  if(matches.length!==1)throw Error("Missing or duplicate cache entry");
+  if(matches.length>1)throw Error("Duplicate cache entry");
+  if(!matches.length){
+   // A missing entry is repairable only for a verified local asset already referenced by HTML.
+   const shell=/const SHELL = \[\n/g;
+   if([...updated.matchAll(shell)].length!==1)throw Error("Unknown cache layout");
+   updated=updated.replace(shell,m=>m+'  new URL("./'+name+'?v='+version+'", BASE).href,\n');
+   repairs.push({kind:"cache_missing",file:name,from:"missing",to:version});
+   continue;
+  }
   if(matches[0][2]!==version){updated=updated.replace(re,(_,a,b,c)=>a+version+c);repairs.push({kind:"cache_version",file:name,from:matches[0][2],to:version});}
  }
  if(repairs.length){const re=/const VERSION = "orivane-shell-v(\d+)";/g;if([...updated.matchAll(re)].length!==1)throw Error("Missing shell version");updated=updated.replace(re,(_,v)=>'const VERSION = "orivane-shell-v'+(Number(v)+1)+'";');}
@@ -24,7 +32,11 @@ export function selfTest(){
  const h='<script src="script.js?v=3"></script><link href="style.css?v=2">';
  const sw='const VERSION = "orivane-shell-v9";\nnew URL("./script.js?v=2", BASE).href,\nnew URL("./style.css?v=2", BASE).href';
  const result=synchronizeCache(h,sw);
- assert.equal(result.repairs.length,1);assert.ok(result.source.includes("script.js?v=3"));assert.ok(result.source.includes("orivane-shell-v10"));assert.equal(synchronizeCache(h,result.source).source,result.source);assert.throws(()=>synchronizeCache(h,sw,()=>false));assert.throws(()=>synchronizeCache(h,sw.replace("script.js","missing.js")));assert.throws(()=>synchronizeCache(h+'<script src="script.js?v=4"></script>',sw));
+ assert.equal(result.repairs.length,1);assert.ok(result.source.includes("script.js?v=3"));assert.ok(result.source.includes("orivane-shell-v10"));assert.equal(synchronizeCache(h,result.source).source,result.source);assert.throws(()=>synchronizeCache(h,sw,()=>false));assert.throws(()=>synchronizeCache(h,sw.replace("script.js","missing.js")));
+ const complete='const SHELL = [\n'+sw.split("\n").slice(1).join("\n")+'\n];\n'+sw.split("\n")[0];
+ const missing=synchronizeCache(h,complete.replace(/new URL\("\.\/script\.js[^\n]*\n/,""));
+ assert.equal(missing.repairs[0].kind,"cache_missing");assert.ok(missing.source.includes('new URL("./script.js?v=3", BASE).href'));
+ assert.equal(synchronizeCache(h,missing.source).source,missing.source);assert.throws(()=>synchronizeCache(h+'<script src="script.js?v=4"></script>',sw));
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
  const report=process.env.ORIVANE_REPAIR_REPORT||"/tmp/orivane-repair-report.json";
