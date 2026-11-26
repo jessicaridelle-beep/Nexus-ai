@@ -202,6 +202,24 @@ try{
   assert.ok(!panel.includes('window.prompt("Enter the secret code")'));
   checks.push({name:"Admin session rejects forged, expired and wrong-origin access",status:"pass"});
 }catch{checks.push({name:"Admin session rejects forged, expired and wrong-origin access",status:"fail"});}
+check("Google OAuth rejects invalid audience, issuer, nonce and expiry",()=>{
+ const ctx=vm.createContext({});
+ vm.runInContext(extract(worker,"function googleClaimsValid(","async function googleVerifyIdentity("),ctx);
+ const now=1800000000,client="test-client",nonce="test-nonce";
+ const claims={iss:"https://accounts.google.com",aud:client,sub:"123456789",nonce,iat:now-5,exp:now+60};
+ assert.equal(ctx.googleClaimsValid(claims,client,nonce,now),true);
+ for(const bad of [{iss:"https://example.com"},{aud:"other-client"},{nonce:"wrong"},{exp:now},{iat:now+120},{azp:"wrong"},{sub:""}]){
+  assert.equal(ctx.googleClaimsValid({...claims,...bad},client,nonce,now),false);
+ }
+ assert.ok(worker.includes("DELETE FROM google_oauth_states WHERE state_hash=? AND expires_at>? RETURNING"));
+ assert.ok(worker.includes("DELETE FROM google_oauth_handoffs WHERE token_hash=? AND browser_challenge=? AND expires_at>? RETURNING"));
+ assert.ok(worker.includes('code_challenge_method:"S256"'));
+ assert.ok(worker.includes('crypto.subtle.verify("RSASSA-PKCS1-v1_5"'));
+ assert.ok(worker.includes('PASSWORD_ITERATIONS,"user")'));
+ assert.ok(browser.includes('googleRequest("google-start"'));
+ assert.ok(browser.includes('googleRequest("google-complete"'));
+ assert.ok(!browser.includes("Google sign-in is waiting for the ORIVANE Google OAuth credentials"));
+});
 const allowedCodes=new Set(JSON.parse(worker.match(/const ORIVANE_REPORT_CODES = new Set\((\[[^\n]+\])\);/)[1]));
 check("Browser diagnostic codes match server allowlist",()=>{
   const browserCodes=JSON.parse(browser.match(/const ORIVANE_BROWSER_CODES=new Set\((\[[^\n]+\])\);/)[1]);
