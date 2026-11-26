@@ -1,0 +1,52 @@
+name: ORIVANE diagnostics
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - Orivane-report.json
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: orivane-diagnostics
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run diagnostics
+        id: diagnose
+        continue-on-error: true
+        env:
+          ORIVANE_REPORT_TOKEN: ${{ secrets.ORIVANE_REPORT_TOKEN }}
+        run: node scripts/orivane-diagnostics.mjs
+      - name: Save report to repository
+        if: always()
+        run: |
+          test -f Orivane-report.json
+          git config user.name "orivane-diagnostics[bot]"
+          git config user.email "orivane-diagnostics[bot]@users.noreply.github.com"
+          git add Orivane-report.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Orivane-report [skip ci]"
+            git push origin HEAD:main
+          fi
+      - name: Upload diagnostics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orivane-report
+          path: Orivane-report.json
+          retention-days: 7
+      - name: Mark failed checks
+        if: steps.diagnose.outcome == 'failure'
+        run: exit 1
