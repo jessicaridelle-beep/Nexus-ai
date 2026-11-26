@@ -424,14 +424,57 @@ const authUrl="https://nexus-ai-api.jessicaridelle.workers.dev/";
  }
  function profileStatus(message){document.getElementById("profileStatus").textContent=message;}
 function setProfileMode(mode){profileMode=mode;document.getElementById("profileSubmit").textContent=mode==="register"?"Create account":"Sign in";document.getElementById("profilePassword").autocomplete=mode==="register"?"new-password":"current-password";document.getElementById("profileModeSwitch").textContent=mode==="register"?"Already have an account? Sign in":"Need an account? Create one";profileStatus(mode==="register"?"Create a username and a password of at least 10 characters.":"Enter your username and password to sign in.");}
-function showSignedIn(user){signedInUser=user;localStorage.setItem(PROFILE_KEY,user.username);document.getElementById("profileOpen").textContent=user.username;document.getElementById("profileSignout").hidden=false;document.getElementById("profileSubmit").hidden=true;document.getElementById("profileModeSwitch").hidden=true;document.getElementById("profileName").value=user.username;document.getElementById("profileName").disabled=true;document.getElementById("profilePassword").hidden=true;profileStatus("Signed in as "+user.username+(user.role==="owner"?" · Owner account":"")+".");window.dispatchEvent(new CustomEvent("orivane-auth-updated",{detail:{user}}));}
+function showSignedIn(user){signedInUser=user;localStorage.setItem(PROFILE_KEY,user.username);document.getElementById("profileOpen").textContent=user.username;document.getElementById("profileSignout").hidden=false;document.getElementById("profileSubmit").hidden=true;document.getElementById("profileModeSwitch").hidden=true;document.getElementById("profileName").value=user.username;document.getElementById("profileName").disabled=true;document.getElementById("profilePassword").hidden=true;document.getElementById("googleSignin").hidden=true;profileStatus("Signed in as "+user.username+(user.role==="owner"?" · Owner account":"")+".");window.dispatchEvent(new CustomEvent("orivane-auth-updated",{detail:{user}}));}
 async function checkAuth(){try{const d=await authIframeRequest("auth-me",{},"GET");if(d.authenticated&&d.user)showSignedIn(d.user);}catch(error){console.warn("ORIVANE account status could not be checked:",error.message);}}
 document.getElementById("profileOpen").addEventListener("click",()=>{document.getElementById("profileName").value=localStorage.getItem(PROFILE_KEY)||"";openDialog("profileOverlay");if(signedInUser)showSignedIn(signedInUser);else setProfileMode("register");});
 document.getElementById("profileModeSwitch").addEventListener("click",()=>setProfileMode(profileMode==="register"?"login":"register"));
 document.getElementById("profileForm").addEventListener("submit",async e=>{e.preventDefault();const username=document.getElementById("profileName").value.trim(),password=document.getElementById("profilePassword").value;const button=document.getElementById("profileSubmit");button.disabled=true;profileStatus(profileMode==="register"?"Creating your account…":"Signing in…");try{const d=await authIframeRequest(profileMode==="register"?"auth-register":"auth-login",{username,password});if(!d.ok||!d.user)throw new Error(d.error||"Authentication failed.");document.getElementById("profilePassword").value="";showSignedIn(d.user);}catch(err){profileStatus(err.message||"The account request failed. Please try again.");}finally{button.disabled=false;}});
-document.getElementById("profileSignout").addEventListener("click",async()=>{try{await authIframeRequest("auth-logout",{});}catch(error){profileStatus(error.message);}signedInUser=null;localStorage.removeItem(PROFILE_KEY);document.getElementById("profileOpen").textContent="Profile / Sign in";document.getElementById("profileName").disabled=false;document.getElementById("profilePassword").hidden=false;document.getElementById("profileSubmit").hidden=false;document.getElementById("profileModeSwitch").hidden=false;document.getElementById("profileSignout").hidden=true;setProfileMode("login");window.dispatchEvent(new CustomEvent("orivane-auth-updated",{detail:{user:null}}));});
-document.getElementById("googleSignin").addEventListener("click",()=>profileStatus("Google sign-in is waiting for the ORIVANE Google OAuth credentials. No account was created."));
-checkAuth();
+document.getElementById("profileSignout").addEventListener("click",async()=>{try{await authIframeRequest("auth-logout",{});}catch(error){profileStatus(error.message);}signedInUser=null;localStorage.removeItem(PROFILE_KEY);document.getElementById("profileOpen").textContent="Profile / Sign in";document.getElementById("profileName").disabled=false;document.getElementById("profilePassword").hidden=false;document.getElementById("googleSignin").hidden=false;document.getElementById("profileSubmit").hidden=false;document.getElementById("profileModeSwitch").hidden=false;document.getElementById("profileSignout").hidden=true;setProfileMode("login");window.dispatchEvent(new CustomEvent("orivane-auth-updated",{detail:{user:null}}));});
+const GOOGLE_BROWSER_KEY="orivane-google-oauth-verifier";
+function googleBrowserB64(bytes){return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
+async function googleRequest(action,body){
+ const url=new URL(authUrl);url.searchParams.set("action",action);
+ const response=await fetch(url.href,{method:"POST",credentials:"include",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||"Google sign-in is temporarily unavailable.");
+ return data;
+}
+const googleButton=document.getElementById("googleSignin");
+googleButton.addEventListener("click",async()=>{
+ if(signedInUser){profileStatus("You are already signed in. Sign out before choosing another account.");return;}
+ googleButton.disabled=true;profileStatus("Connecting securely to Google…");
+ try{
+  const verifier=googleBrowserB64(crypto.getRandomValues(new Uint8Array(32)));
+  sessionStorage.setItem(GOOGLE_BROWSER_KEY,verifier);
+  const challenge=googleBrowserB64(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(verifier)));
+  const data=await googleRequest("google-start",{challenge});
+  const target=new URL(data.authorizationUrl);
+  if(target.origin!=="https://accounts.google.com"||target.pathname!=="/o/oauth2/v2/auth")throw Error("Invalid Google sign-in address.");
+  location.assign(target.href);
+ }catch(error){sessionStorage.removeItem(GOOGLE_BROWSER_KEY);profileStatus(error.message||"Google sign-in failed.");googleButton.disabled=false;}
+});
+async function googleComplete(){
+ const hash=new URLSearchParams(location.hash.slice(1));
+ if(!hash.has("google-login")&&!hash.has("google-error"))return;
+ history.replaceState(null,"",location.pathname+location.search);
+ const verifier=sessionStorage.getItem(GOOGLE_BROWSER_KEY);sessionStorage.removeItem(GOOGLE_BROWSER_KEY);
+ openDialog("profileOverlay");
+ if(hash.has("google-error")){
+  const errors={cancelled:"Google sign-in was cancelled.",not_configured:"Google sign-in has not been configured yet.",invalid_state:"Google sign-in expired. Please try again.",provider_error:"Google could not complete sign-in. Please try again."};
+  profileStatus(errors[hash.get("google-error")]||"Google sign-in failed. Please try again.");return;
+ }
+ if(!verifier){profileStatus("Google sign-in must finish in the same browser tab. Please try again.");return;}
+ googleButton.disabled=true;profileStatus("Finishing Google sign-in…");
+ try{
+  const result=await googleRequest("google-complete",{handoff:hash.get("google-login"),verifier});
+  if(!result.ok||!result.user)throw Error("Google sign-in did not finish.");
+  const confirmed=await authIframeRequest("auth-me",{},"GET");
+  if(!confirmed.authenticated||!confirmed.user||confirmed.user.username!==result.user.username)throw Error("The browser could not retain the secure account session. Please check cookie settings.");
+  showSignedIn(confirmed.user);profileStatus("Signed in with Google as "+confirmed.user.username+".");
+ }catch(error){profileStatus(error.message||"Google sign-in failed.");}
+ finally{googleButton.disabled=false;}
+}
+if(!/^#google-(?:login|error)=/.test(location.hash))checkAuth();else googleComplete();
 function loadSettings(){const p=readPrefs();document.getElementById("appLanguage").value=orivaneLanguagePreference();document.getElementById("displayName").value=p.name||"";document.getElementById("customInstructions").value=p.instructions||"";document.getElementById("responseStyle").value=p.style||"balanced";document.getElementById("useName").checked=!!p.useName;document.getElementById("themeChoice").value=localStorage.getItem("orivane-theme")||"dark";document.getElementById("memorySetting").checked=memoryEnabled;}
 document.getElementById("settingsOpen").addEventListener("click",()=>{loadSettings();openDialog("settingsOverlay");});
 document.querySelectorAll("[data-settings-tab]").forEach(tab=>tab.addEventListener("click",()=>{document.querySelectorAll("[data-settings-tab]").forEach(t=>t.classList.toggle("active",t===tab));document.querySelectorAll("[data-settings-pane]").forEach(p=>p.hidden=p.dataset.settingsPane!==tab.dataset.settingsTab);}));
