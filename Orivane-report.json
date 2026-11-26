@@ -1,11 +1,11 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:20:50.624Z",
-  "commit": "e63afa103917d9338c80f0e0fa65d6c280cdf7b9",
+  "generatedAt": "2026-11-26T21:35:38.329Z",
+  "commit": "281ee119ba6f41c816ece410425e72ed72a33156",
   "codeChecks": {
-    "passed": 31,
-    "failed": 0,
+    "passed": 30,
+    "failed": 1,
     "checks": [
       {
         "name": "JavaScript syntax: canvas.js",
@@ -121,7 +121,7 @@
       },
       {
         "name": "Unclosed bold detected on server and browser; literal code preserved",
-        "status": "pass"
+        "status": "fail"
       },
       {
         "name": "Browser diagnostic codes match server allowlist",
