@@ -1,10 +1,10 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:06:06.176Z",
-  "commit": "86b0001a4c0ca77dbe843acfae5876da28e5f0a7",
+  "generatedAt": "2026-11-26T21:06:16.294Z",
+  "commit": "acb4743c927efb303c355ce1299a11e676e709fe",
   "codeChecks": {
-    "passed": 22,
+    "passed": 23,
     "failed": 0,
     "checks": [
       {
@@ -93,6 +93,10 @@
       },
       {
         "name": "Empty stream fallback and diagnostics wired",
+        "status": "pass"
+      },
+      {
+        "name": "Chat links are clickable and unsafe schemes rejected",
         "status": "pass"
       }
     ]
