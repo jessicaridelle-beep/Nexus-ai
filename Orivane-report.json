@@ -1,11 +1,11 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:35:38.329Z",
-  "commit": "281ee119ba6f41c816ece410425e72ed72a33156",
+  "generatedAt": "2026-11-26T21:40:15.258Z",
+  "commit": "9dde90b635e1bbc2551a3d3da884153beb1ba4f0",
   "codeChecks": {
-    "passed": 30,
-    "failed": 1,
+    "passed": 32,
+    "failed": 2,
     "checks": [
       {
         "name": "JavaScript syntax: canvas.js",
@@ -49,6 +49,10 @@
       },
       {
         "name": "JavaScript syntax: script.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: scripts/orivane-auto-repair.mjs",
         "status": "pass"
       },
       {
@@ -109,7 +113,7 @@
       },
       {
         "name": "Clarification card hides raw protocol and accepts empty choices",
-        "status": "pass"
+        "status": "fail"
       },
       {
         "name": "Live replies use the same rich renderer as saved messages",
@@ -117,11 +121,11 @@
       },
       {
         "name": "Visible chat watchdog catches raw bold and missing cards",
-        "status": "pass"
+        "status": "fail"
       },
       {
         "name": "Unclosed bold detected on server and browser; literal code preserved",
-        "status": "fail"
+        "status": "pass"
       },
       {
         "name": "Browser diagnostic codes match server allowlist",
@@ -130,24 +134,64 @@
       {
         "name": "Report card loads scheduled and live data independently",
         "status": "pass"
+      },
+      {
+        "name": "Automatic cache repair is scoped and idempotent",
+        "status": "pass"
+      },
+      {
+        "name": "GitHub report identity rejects wrong repository, workflow and expired claims",
+        "status": "pass"
       }
     ]
   },
   "browserChecks": {
-    "status": "unavailable",
-    "passed": 0,
-    "failed": 1,
-    "skipped": 0,
+    "status": "completed",
+    "passed": 2,
+    "failed": 4,
+    "skipped": 1,
     "checks": [
       {
-        "name": "Browser test report unavailable",
+        "name": "Browser: typed streamed reply renders bold, italics, and clickable link",
         "status": "fail",
-        "code": "report_missing"
+        "code": "timeout"
+      },
+      {
+        "name": "Browser: unfinished bold is repaired and reported",
+        "status": "fail",
+        "code": "assertion_or_browser_error"
+      },
+      {
+        "name": "Browser: clarification card appears without refreshing and submits typed answer",
+        "status": "fail",
+        "code": "timeout"
+      },
+      {
+        "name": "Browser: poll and checklist controls work without refresh",
+        "status": "pass"
+      },
+      {
+        "name": "Browser: empty stream retries and records failure",
+        "status": "pass"
+      },
+      {
+        "name": "Browser: inline code and file fences stay literal",
+        "status": "fail",
+        "code": "timeout"
+      },
+      {
+        "name": "Live: deployed ORIVANE",
+        "status": "skip",
+        "code": "scheduled_or_manual_only"
       }
     ]
   },
-  "runtimeStatus": "not_configured",
+  "autoRepair": {
+    "status": "no_changes",
+    "repairs": []
+  },
+  "runtimeStatus": "unavailable",
   "runtime": [],
   "privacy": "Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",
-  "limits": "Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require the read-only report token."
+  "limits": "Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require authenticated read-only access. Automatic source repair is limited to verified local cache entries and versions; other bugs require review."
 }
