@@ -1,11 +1,11 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:40:15.258Z",
-  "commit": "9dde90b635e1bbc2551a3d3da884153beb1ba4f0",
+  "generatedAt": "2026-11-26T21:51:24.196Z",
+  "commit": "c635b80df3f3177ebd32c93c1051a0272bc68a53",
   "codeChecks": {
-    "passed": 32,
-    "failed": 2,
+    "passed": 33,
+    "failed": 1,
     "checks": [
       {
         "name": "JavaScript syntax: canvas.js",
@@ -101,7 +101,7 @@
       },
       {
         "name": "Empty stream fallback and diagnostics wired",
-        "status": "pass"
+        "status": "fail"
       },
       {
         "name": "Chat links are clickable and unsafe schemes rejected",
@@ -113,7 +113,7 @@
       },
       {
         "name": "Clarification card hides raw protocol and accepts empty choices",
-        "status": "fail"
+        "status": "pass"
       },
       {
         "name": "Live replies use the same rich renderer as saved messages",
@@ -121,7 +121,7 @@
       },
       {
         "name": "Visible chat watchdog catches raw bold and missing cards",
-        "status": "fail"
+        "status": "pass"
       },
       {
         "name": "Unclosed bold detected on server and browser; literal code preserved",
@@ -147,24 +147,29 @@
   },
   "browserChecks": {
     "status": "completed",
-    "passed": 2,
+    "passed": 4,
     "failed": 4,
     "skipped": 1,
     "checks": [
       {
         "name": "Browser: typed streamed reply renders bold, italics, and clickable link",
         "status": "fail",
-        "code": "timeout"
+        "code": "timeout",
+        "stage": "bold_render"
       },
       {
         "name": "Browser: unfinished bold is repaired and reported",
         "status": "fail",
-        "code": "assertion_or_browser_error"
+        "code": "assertion_failed",
+        "stage": "unfinished_bold_render"
       },
       {
         "name": "Browser: clarification card appears without refreshing and submits typed answer",
-        "status": "fail",
-        "code": "timeout"
+        "status": "pass"
+      },
+      {
+        "name": "Browser: ordinary clarification stays plain text",
+        "status": "pass"
       },
       {
         "name": "Browser: poll and checklist controls work without refresh",
@@ -177,7 +182,14 @@
       {
         "name": "Browser: inline code and file fences stay literal",
         "status": "fail",
-        "code": "timeout"
+        "code": "timeout",
+        "stage": "inline_code_render"
+      },
+      {
+        "name": "Browser: expandable answers, saved replies and follow-up drafts",
+        "status": "fail",
+        "code": "timeout",
+        "stage": "reply_rendered"
       },
       {
         "name": "Live: deployed ORIVANE",
@@ -191,6 +203,7 @@
     "repairs": []
   },
   "runtimeStatus": "unavailable",
+  "runtimeDetail": "oidc_http_403",
   "runtime": [],
   "privacy": "Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",
   "limits": "Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require authenticated read-only access. Automatic source repair is limited to verified local cache entries and versions; other bugs require review."
