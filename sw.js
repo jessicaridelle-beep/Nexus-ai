@@ -1,4 +1,4 @@
-const VERSION = "orivane-shell-v35";
+const VERSION = "orivane-shell-v36";
 const BASE = new URL("./", self.location.href);
 const SHELL = [
   new URL("./", BASE).href,
@@ -10,7 +10,7 @@ const SHELL = [
   new URL("./control-center.js?v=2", BASE).href,
   new URL("./canvas.js?v=2", BASE).href,
   new URL("./motion.js?v=1", BASE).href,
-  new URL("./script.js?v=59", BASE).href,
+  new URL("./script.js?v=60", BASE).href,
   new URL("./owner-panel.js?v=32", BASE).href,
   new URL("./feature-suite.js?v=3", BASE).href,
   new URL("./owner-panel.css?v=2", BASE).href,
@@ -24,7 +24,7 @@ const SHELL = [
   new URL("./orivane-icon.svg", BASE).href
 ];
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(VERSION).then(cache => cache.addAll(SHELL.map(url=>new Request(url,{cache:"reload"})))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("orivane-shell-") && key !== VERSION).map(key => caches.delete(key)))).then(() => self.clients.claim()));
@@ -37,19 +37,22 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).then(response => {
+    event.respondWith(fetch(request,{cache:"no-cache"}).then(response => {
       if (response.ok) caches.open(VERSION).then(cache => cache.put(new URL("./index.html", BASE).href, response.clone()));
       return response;
     }).catch(async () => (await caches.match(request)) || (await caches.match(new URL("./index.html", BASE).href)) || Response.error()));
     return;
   }
   if (SHELL.includes(request.url) || /\.(?:css|js|svg|json)$/.test(url.pathname)) {
-    event.respondWith(caches.match(request).then(cached => {
-      const fresh = fetch(request).then(response => {
-        if (response.ok) caches.open(VERSION).then(cache => cache.put(request, response.clone()));
-        return response;
-      }).catch(() => cached);
-      return cached || fresh;
-    }));
+    event.respondWith((async () => {
+      const cache = await caches.open(VERSION);
+      try {
+        const response = await fetch(request,{cache:"no-cache"});
+        if(response.ok){await cache.put(request,response.clone());return response;}
+        return (await cache.match(request)) || response;
+      } catch {
+        return (await cache.match(request)) || Response.error();
+      }
+    })());
   }
 });
