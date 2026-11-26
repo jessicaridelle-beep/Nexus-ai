@@ -1,10 +1,10 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:09:58.241Z",
-  "commit": "c57f7f8fc8ddea381dc53b9f1e174eb93a45fb94",
+  "generatedAt": "2026-11-26T21:10:08.734Z",
+  "commit": "0802ca12ce92d602babeb5124fb6074bbe7670aa",
   "codeChecks": {
-    "passed": 23,
+    "passed": 24,
     "failed": 0,
     "checks": [
       {
@@ -97,6 +97,10 @@
       },
       {
         "name": "Chat links are clickable and unsafe schemes rejected",
+        "status": "pass"
+      },
+      {
+        "name": "Streaming Markdown and readable copy formatting",
         "status": "pass"
       }
     ]
