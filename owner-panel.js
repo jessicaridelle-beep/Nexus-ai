@@ -1,6 +1,6 @@
 /* ORIVANE Personal + Owner Admin Center.
    Local appearance/preferences stay in this browser.
-   Shared AI policy and website change notes require the authenticated owner account. */
+   Shared AI policy and website change notes require a verified Admin Panel session. */
 (()=> {
 "use strict";
 const API="https://nexus-ai-api.jessicaridelle.workers.dev/",KEY="orivane-personal-admin-v1",CHANGE_KEY="orivane-website-change-log-v1";
@@ -20,13 +20,14 @@ function apply(){
 }
 async function api(action,options={}){const r=await fetch(API+"?action="+encodeURIComponent(action),{credentials:"include",cache:"no-store",...options});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||"Request failed ("+r.status+").");return d}
 async function ownerStatus(){const d=await api("auth-me");const user=d.authenticated?d.user:null;if(user?.role==="owner")return {user,ownerInfo:null};let ownerInfo=null;try{ownerInfo=await api("auth-owner-status")}catch{}return {user,ownerInfo}}
-function open(){
+async function open(){
+ if(!(await refreshAdminAccess())){showAdminLogin();return;}
  if(overlay){overlay.hidden=false;refreshOpenPanel?.();return}
  overlay=node("div",{class:"owner-overlay"});const card=node("section",{class:"owner-card admin-card",role:"dialog","aria-modal":"true"});
  const close=node("button",{class:"owner-close",type:"button","aria-label":"Close"},"×");close.onclick=()=>overlay.hidden=true;
  const head=node("div",{class:"owner-head"}),intro=node("div");
  intro.append(node("div",{class:"owner-kicker"},"ORIVANE · ADMIN CONTROL CENTER"),node("h2",{class:"owner-title"},"Control Center"),node("p",{class:"owner-sub"},"Appearance and personal AI settings are local. Global AI controls are available inside the Admin Panel."));
- head.append(intro,close);card.append(head);
+ const lock=node("button",{id:"orivaneAdminLock",type:"button",class:"owner-secondary"},"Lock admin");lock.hidden=adminSource!=="admin";lock.onclick=lockAdmin;head.append(intro,lock,close);card.append(head);
  const tabs=node("div",{class:"admin-tabs"}),content=node("div",{class:"admin-content"});card.append(tabs,content);overlay.append(card);overlay.onclick=e=>{if(e.target===overlay)overlay.hidden=true};document.body.append(overlay);
  let active="Overview";const names=["Overview","Life tools","Appearance","AI controls","Global AI","Visitors","Diagnostics","Admin Lab"];
  function render(){
@@ -166,7 +167,7 @@ function open(){
    const compare=node("button",{class:"owner-secondary",type:"button"},"⇄ Compare answers");
    compare.onclick=()=>{const b=document.getElementById("orivaneCompareOpen");if(b)b.click();else status.textContent="Open Compare answers from the chat tools.";};
    actions.append(diagnostics,randomTheme,focus,easter,backup,compare);content.append(actions);
-   content.append(node("p",{class:"owner-foot"},"Admin Lab is a local toolbox: diagnostics, random accent generator, focus mode, surprise messages, workspace backup and answer comparison. Global AI settings remain protected by authenticated owner access."));
+   content.append(node("p",{class:"owner-foot"},"Admin Lab is a local toolbox: diagnostics, random accent generator, focus mode, surprise messages, workspace backup and answer comparison. Global AI settings remain protected by the verified admin session."));
   }
   if(active==="Visitors"){
    const grid=node("div",{class:"owner-grid"}),a=node("article",{class:"owner-tile"}),b=node("article",{class:"owner-tile"});
@@ -177,18 +178,9 @@ function open(){
  }
  async function renderGlobal(){
   const form=node("div",{class:"admin-form"});
-  content.append(node("p",{class:"owner-foot"},"Global AI uses your existing ORIVANE owner session. Changes apply to every visitor."));
+  content.append(node("p",{class:"owner-foot"},"Your verified Admin Panel session already authorizes Global AI. Changes apply to every visitor."));
   const status=node("p",{class:"owner-status"},"Loading shared AI settings…");content.append(status);
   try{
-   const auth=await api("auth-me");
-   if(active!=="Global AI"||!status.isConnected)return;
-   if(!auth.authenticated||auth.user?.role!=="owner"){
-    status.textContent=auth.authenticated?"This account does not have the owner role. Sign in with the owner account.":"Sign in to your ORIVANE owner account to access Global AI.";
-    const signIn=node("button",{class:"owner-primary",type:"button"},auth.authenticated?"Open account settings":"Sign in to owner account");
-    signIn.onclick=()=>{overlay.hidden=true;$("profileOpen")?.click();if(!auth.authenticated&&typeof setProfileMode==="function")setProfileMode("login");};
-    const retry=node("button",{class:"header-action",type:"button"},"↻ Check access again");retry.onclick=render;
-    content.append(signIn,retry);return;
-   }
    const data=await api("global-ai-settings");
    if(active!=="Global AI"||!status.isConnected)return;
    globalData={instructions:data.instructions||"",changeLog:data.changeLog||""};
@@ -208,8 +200,7 @@ function heartbeat(){let id=localStorage.getItem("orivane-anon-visitor-id");if(!
 apply();
 let ownerAuthRenderVersion=0;
 function installOwnerEntry(){
- const verifiedOwner=typeof signedInUser!=="undefined"&&signedInUser?.role==="owner";
- const unlocked=verifiedOwner||localStorage.getItem("orivane-secret-unlocked-v1")==="1";
+ const unlocked=adminAccess;
  const profile=$("profileOpen"),sidebar=$("sidebar");
  if(!unlocked){
   $("adminPanelOpen")?.remove();$("adminPanelSidebarOpen")?.remove();
@@ -228,32 +219,64 @@ function installOwnerEntry(){
  }
  window.ORIVANE_ADMIN_PANEL={open};
 }
+let adminAccess=false,adminSource=null,adminLoginOverlay=null,adminStatusVersion=0;
+async function refreshAdminAccess(){
+ const version=++adminStatusVersion;
+ let data=null;
+ try{data=await api("admin-session");}catch{}
+ if(version!==adminStatusVersion)return adminAccess;
+ adminAccess=data?.authenticated===true;
+ adminSource=adminAccess?data.source:null;
+ installOwnerEntry();
+ const button=$("secretUnlock");if(button)button.textContent=adminAccess?"✓ Admin unlocked":"⌁ Secret";
+ const lock=$("orivaneAdminLock");if(lock)lock.hidden=adminSource!=="admin";
+ if(!adminAccess&&overlay)overlay.hidden=true;
+ return adminAccess;
+}
+function showAdminLogin(){
+ if(adminLoginOverlay){adminLoginOverlay.hidden=false;adminLoginOverlay.querySelector("input")?.focus();return;}
+ const layer=node("div",{class:"owner-overlay"}),card=node("section",{class:"owner-card admin-card",role:"dialog","aria-modal":"true","aria-label":"Admin Panel login"});
+ const head=node("div",{class:"owner-head"}),title=node("div"),close=node("button",{class:"owner-close",type:"button","aria-label":"Close"},"×");
+ title.append(node("div",{class:"owner-kicker"},"ORIVANE · ADMIN PANEL"),node("h2",{class:"owner-title"},"Unlock Admin Panel"),node("p",{class:"owner-sub"},"One secure login unlocks Global AI and the other admin tools. No separate profile is needed."));
+ close.onclick=()=>{layer.hidden=true;field.value="";};head.append(title,close);card.append(head);
+ const form=node("form",{class:"admin-form"}),field=input(form,"Private admin code","password","",{autocomplete:"current-password",required:"",maxlength:"256"});
+ const status=node("p",{class:"owner-status",role:"status"},"Enter your private Admin Panel code.");
+ const submit=node("button",{class:"owner-primary",type:"submit"},"Unlock Admin Panel");
+ form.append(status,submit);card.append(form);layer.append(card);document.body.append(layer);adminLoginOverlay=layer;
+ layer.onclick=e=>{if(e.target===layer){layer.hidden=true;field.value="";}};
+ form.onsubmit=async e=>{
+  e.preventDefault();submit.disabled=true;status.classList.remove("error");status.textContent="Verifying Admin Panel access…";
+  try{
+   await api("admin-login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:field.value})});
+   field.value="";
+   if(!(await refreshAdminAccess()))throw Error("The browser could not retain the secure admin session. Check cookie settings and try again.");
+   layer.hidden=true;await open();
+  }catch(error){status.textContent=error.message||"Admin login failed.";status.classList.add("error");}
+  finally{field.value="";submit.disabled=false;}
+ };
+ field.focus();
+}
+async function lockAdmin(){
+ try{await api("admin-logout",{method:"POST"});}catch(error){window.alert(error.message||"Could not end the admin session. Try again.");return;}
+ if(overlay)overlay.hidden=true;
+ await refreshAdminAccess();
+}
 function installSecretUnlock(){
- const sidebar=$("sidebar");
- if(!sidebar)return;
+ const sidebar=$("sidebar");if(!sidebar)return;
  let button=$("secretUnlock");
  if(!button){
   button=node("button",{type:"button",id:"secretUnlock",class:"secret-unlock"},"⌁ Secret");
-  button.setAttribute("aria-label","Unlock the hidden admin panel entry");
-  button.onclick=()=>{
-   const entered=window.prompt("Enter the secret code");
-   if(entered===null)return;
-   if(entered!=="categorised under 14"){window.alert("Incorrect secret code.");return}
-   localStorage.setItem("orivane-secret-unlocked-v1","1");
-   button.textContent="✓ Secret unlocked";
-   installOwnerEntry();
-   window.alert("Secret accepted. Admin Panel is unlocked.");
-  };
+  button.setAttribute("aria-label","Unlock Admin Panel");
+  button.onclick=open;
  }
- // Keep the Secret control inside the visible sidebar footer area.
  const footer=$(".sidebar-bottom");
- if(footer){sidebar.insertBefore(button,footer)}else{sidebar.append(button)}
- if(localStorage.getItem("orivane-secret-unlocked-v1")==="1")button.textContent="✓ Secret unlocked";
- else button.textContent="⌁ Secret";
+ if(footer){sidebar.insertBefore(button,footer);}else{sidebar.append(button);}
+ button.textContent=adminAccess?"✓ Admin unlocked":"⌁ Secret";
 }
-
+try{localStorage.removeItem("orivane-secret-unlocked-v1");}catch{}
 installSecretUnlock();
 installOwnerEntry();
-window.addEventListener("orivane-auth-updated",()=>{installOwnerEntry();if(overlay&&!overlay.hidden)refreshOpenPanel?.();});
+refreshAdminAccess();
+window.addEventListener("orivane-auth-updated",async()=>{if(await refreshAdminAccess()){if(overlay&&!overlay.hidden)refreshOpenPanel?.();}});
 heartbeat();setInterval(heartbeat,30000);
 })();
