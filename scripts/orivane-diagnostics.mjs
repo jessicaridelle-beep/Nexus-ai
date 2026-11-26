@@ -73,10 +73,21 @@ check("Stream token readers handle supported model packets",()=>{
   for(const [packet,expected] of packets){assert.equal(ctx.orivaneDiagnosticToken(packet),expected);assert.equal(ctx.orivaneStreamToken(packet),expected);}
 });
 check("Empty stream fallback and diagnostics wired",()=>{
-  assert.ok(browser.includes('orivaneBrowserReport(["browser_empty_stream"])'));
+  assert.ok(browser.includes('retryAI("browser_empty_stream")'));assert.ok(browser.includes("orivaneBrowserReport([reason])"));
   assert.ok(browser.includes("requestAI(false)"));
   assert.ok(worker.includes('["empty_stream"]'));
   assert.ok(worker.includes("orivaneReportRecord"));
+});
+check("AI usage limits are distinguished from reconnect failures",()=>{
+ const ctx=vm.createContext({});
+ vm.runInContext(extract(worker,"function orivaneModelFailure(","export default {"),ctx);
+ vm.runInContext(extract(browser,"function orivaneUsageLimit(","async function sendMessage("),ctx);
+ assert.equal(ctx.orivaneModelFailure({code:4006}).status,429);
+ assert.equal(ctx.orivaneModelFailure({message:"daily free allocation"}).code,"model_quota");
+ assert.ok(ctx.orivaneUsageLimit(429,"model_quota").includes("daily"));
+ assert.ok(ctx.orivaneUsageLimit(429,"model_rate_limited").includes("rate-limiting"));
+ assert.equal(ctx.orivaneUsageLimit(502,"model_provider_error"),"");
+ assert.ok(browser.includes("if(streamedLimit)throw Error(streamedLimit)"));
 });
 check("Chat links are clickable and unsafe schemes rejected",()=>{
   const makeNode=tag=>({tag,children:[],append(...items){this.children.push(...items);},appendChild(item){this.children.push(item);}});
