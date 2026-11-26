@@ -108,6 +108,23 @@ try{
   stage="file_code_render";assert.ok((await row.locator(".assistant-message-content pre code").innerText()).includes("**unchanged**"));
   stage="file_download_control";assert.equal(await row.getByRole("button",{name:"Download file",exact:true}).count(),1);
  }));
+ await check("Browser: expandable answers, saved replies and follow-up drafts",()=>withPage(local,()=>json("Main answer.\n\n> [!TIP]\n> **Useful advice**\n\n> [!DETAILS]\n> Extra detail"),async(page,count)=>{
+  const row=await send(page,"Test new chat tools");
+  assert.equal(await row.locator(".orivane-callout-tip strong").first().innerText(),"Tip");
+  const detail=row.locator("details.orivane-callout-details");
+  assert.equal(await detail.getAttribute("open"),null);
+  await detail.locator("summary").click();
+  assert.notEqual(await detail.getAttribute("open"),null);
+  await row.getByRole("button",{name:"Save reply",exact:true}).click();
+  await page.getByRole("button",{name:"Saved replies",exact:true}).click();
+  assert.ok((await page.locator("#orivaneSavedReplies").innerText()).includes("Main answer"));
+  await row.getByRole("button",{name:"Follow-up",exact:true}).click();
+  await row.getByRole("button",{name:"Shorter",exact:true}).click();
+  assert.ok((await page.locator("#promptInput").inputValue()).includes("Make this reply shorter"));
+  assert.equal(count(),1);
+  await page.locator("#orivaneSavedReplies").getByRole("button",{name:"Remove",exact:true}).click();
+  assert.ok((await page.locator("#orivaneSavedReplies").innerText()).includes("No saved replies"));
+ }));
  if(process.env.ORIVANE_LIVE_TEST==="true"){
   await check("Live: deployed ORIVANE receives a typed prompt and renders its reply",()=>withPage(LIVE,null,async page=>{
    const row=await send(page,"For a harmless formatting check, reply with the word Bold in bold, Italic in italics, and a clickable link to https://example.com/. Keep it short.");
