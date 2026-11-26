@@ -48,7 +48,7 @@ function orivaneImageLink(parent,url,label){let parsed;try{parsed=new URL(url);i
 }
 function orivaneInline(parent,text,depth=0,preview=false){
  const s=String(text);if(depth>4){parent.append(document.createTextNode(s));return;}
- const pattern=/\\([\\*_[\]~])|\x60([^\x60\n]+)\x60|\*\*\*([^*\n]+)\*\*\*|\*\*([^*\n]+)\*\*|__([^_\n]+)__|~~([^~\n]+)~~|<u>([^<\n]+)<\/u>|\*([^*\n]+)\*|(?<!\w)_([^_\n]+)_(?!\w)|(!?)\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()<>"']+|\([^\s()<>"']*\))+)\)|(<https?:\/\/[^\s<>]+>|(?<![\w@])(?:https?:\/\/|www\.)[^\s<>"']+)/gi;
+ const pattern=/\\([\\*_[\]~])|\x60([^\x60\n]+)\x60|\*\*\*([^*\n]+)\*\*\*|(?<!\*)\*(?:\*|(?=[^\s*](?:[^*\n]*[^\s*])?\*\*(?!\*)))([^\s*](?:[^*\n]*[^\s*])?)\*\*?(?!\*)|__([^_\n]+)__|~~([^~\n]+)~~|<u>([^<\n]+)<\/u>|\*([^*\n]+)\*|(?<!\w)_([^_\n]+)_(?!\w)|(!?)\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()<>"']+|\([^\s()<>"']*\))+)\)|(<https?:\/\/[^\s<>]+>|(?<![\w@])(?:https?:\/\/|www\.)[^\s<>"']+)/gi;
  let end=0;
  for(const m of s.matchAll(pattern)){parent.append(document.createTextNode(s.slice(end,m.index)));end=m.index+m[0].length;
  if(m[1]){parent.append(document.createTextNode(m[1]));continue;}
@@ -77,7 +77,7 @@ function orivanePlainText(text){
     return line.replace(/\x60([^\x60\n]+)\x60/g,(_,value)=>keep(value))
       .replace(/!?\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()]+|\([^\s()]*\))+)\)/gi,(_,label,url)=>keep(label+" ("+url+")"))
       .replace(/\\([\\*_[\]~])/g,(_,char)=>keep(char))
-      .replace(/\*\*\*([^*\n]+)\*\*\*/g,"$1").replace(/\*\*([^*\n]+)\*\*/g,"$1")
+      .replace(/\*\*\*([^*\n]+)\*\*\*/g,"$1").replace(/(?<!\*)\*(?:\*|(?=[^\s*](?:[^*\n]*[^\s*])?\*\*(?!\*)))([^\s*](?:[^*\n]*[^\s*])?)\*\*?(?!\*)/g,"$1")
       .replace(/__([^_\n]+)__/g,"$1").replace(/~~([^~\n]+)~~/g,"$1")
       .replace(/<u>([^<\n]+)<\/u>/gi,"$1").replace(/\*([^*\n]+)\*/g,"$1")
       .replace(/(?<!\w)_([^_\n]+)_(?!\w)/g,"$1").replace(/^\s*#{1,6}\s+/,"")
