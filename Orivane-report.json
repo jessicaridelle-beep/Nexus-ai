@@ -1,11 +1,11 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:19:21.229Z",
-  "commit": "0861db27c1c81f58831b3212dbdbff8bbebd1837",
+  "generatedAt": "2026-11-26T21:19:42.214Z",
+  "commit": "bffa060d439be2a65ec3e4e84bc6ae44883b4fa7",
   "codeChecks": {
-    "passed": 29,
-    "failed": 1,
+    "passed": 30,
+    "failed": 0,
     "checks": [
       {
         "name": "JavaScript syntax: canvas.js",
@@ -81,7 +81,7 @@
       },
       {
         "name": "Chat asset versions match service worker",
-        "status": "fail"
+        "status": "pass"
       },
       {
         "name": "Reply watchdog catches known empty and error replies",
