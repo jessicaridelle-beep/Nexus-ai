@@ -140,7 +140,7 @@ check("Unclosed bold detected on server and browser; literal code preserved",()=
   for(const [source,end] of [[worker,"function orivaneReplyIssues("],[browser,"function orivaneRenderIssues("]]){
     const ctx=vm.createContext({});
     vm.runInContext(extract(source,"function orivaneUnclosedBold(",end),ctx);
-    for(const [input,found,expected] of [["**bold...",true,"bold..."],["**bold**",false,"**bold**"],["**good** then **unfinished",true,"**good** then unfinished"],["\x60**literal\x60",false,"\x60**literal\x60"],["\\**literal",false,"\\**literal"],["2**3",false,"2**3"],["\x60\x60\x60\n**code\n\x60\x60\x60",false,"\x60\x60\x60\n**code\n\x60\x60\x60"]]){
+    for(const [input,found,expected] of [["**bold...",true,"**bold...**"],["**bold**",false,"**bold**"],["**good** then **unfinished",true,"**good** then **unfinished**"],["*bold**",true,"**bold**"],["**bold*",true,"**bold**"],["\x60**literal\x60",false,"\x60**literal\x60"],["\\**literal",false,"\\**literal"],["2**3",false,"2**3"],["\x60\x60\x60\n**code\n\x60\x60\x60",false,"\x60\x60\x60\n**code\n\x60\x60\x60"]]){
       const r=ctx.orivaneUnclosedBold(input,true);assert.equal(r.found,found);assert.equal(r.text,expected);
     }
   }
