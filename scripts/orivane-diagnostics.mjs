@@ -160,17 +160,49 @@ check("Report card loads scheduled and live data independently",()=>{
   const panel=fs.readFileSync("owner-panel.js","utf8");
   assert.ok(panel.includes("Promise.allSettled"));assert.ok(panel.includes('api("orivane-report")'));assert.ok(panel.includes("Bot list · recorded events"));assert.ok(panel.includes("scheduledRuntimeStatus"));
 });
+check("Automatic cache repair is scoped and idempotent",()=>{
+  const result=spawnSync(process.execPath,["--input-type=module","-e",'import { selfTest } from "./scripts/orivane-auto-repair.mjs"; selfTest();'],{encoding:"utf8"});
+  assert.equal(result.status,0);
+});
+check("GitHub report identity rejects wrong repository, workflow and expired claims",()=>{
+ const ctx=vm.createContext({});
+ vm.runInContext(extract(worker,"const ORIVANE_REPORT_ISSUER=","function orivaneDecodeJwt("),ctx);
+ const now=1800000000,repo="jessicaridelle-beep/Nexus-ai";
+ const claims={iss:"https://token.actions.githubusercontent.com",aud:"orivane-diagnostics-read",repository_id:"1443488586",repository:repo,ref:"refs/heads/main",workflow_ref:repo+"/.github/workflows/orivane-diagnostics.yml@refs/heads/main",event_name:"schedule",runner_environment:"github-hosted",exp:now+300,nbf:now-5,iat:now-5};
+ assert.ok(ctx.orivaneReportClaimsValid(claims,now));
+ for(const bad of [{repository_id:"0"},{workflow_ref:"wrong"},{ref:"refs/heads/other"},{event_name:"pull_request"},{aud:"wrong"},{exp:now-1}])assert.equal(ctx.orivaneReportClaimsValid({...claims,...bad},now),false);
+});
 const modes=new Set(["fast","thinking","pro","unknown"]);
 let runtimeStatus="not_configured",runtime=[];
-if(process.env.ORIVANE_REPORT_TOKEN){
-  try{
-    const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=orivane-report",{headers:{Authorization:"Bearer "+process.env.ORIVANE_REPORT_TOKEN},signal:AbortSignal.timeout(15000),redirect:"error"});
-    if(!response.ok)throw Error();
-    const result=await response.json();
-    if(result.name!=="Orivane-report"||result.schema!==1||!Array.isArray(result.runtime))throw Error();
-    runtime=result.runtime.slice(0,4000).filter(r=>r&&allowedCodes.has(r.code)&&modes.has(r.mode)&&/^\d{4}-\d{2}-\d{2}$/.test(r.day)&&Number.isSafeInteger(r.count)&&r.count>0).map(({day,code,mode,count})=>({day,code,mode,count}));
-    runtimeStatus="received";
-  }catch{runtimeStatus="unavailable";}
+let runtimeToken=process.env.ORIVANE_REPORT_TOKEN||"";
+if(!runtimeToken&&process.env.ACTIONS_ID_TOKEN_REQUEST_URL&&process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN){
+ try{
+   const url=new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);
+   url.searchParams.set("audience","orivane-diagnostics-read");
+   const response=await fetch(url,{headers:{Authorization:"Bearer "+process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN},redirect:"error",signal:AbortSignal.timeout(10000)});
+   if(!response.ok)throw Error();
+   const data=await response.json();
+   if(typeof data.value!=="string"||data.value.length>16000)throw Error();
+   runtimeToken=data.value;
+ }catch{runtimeStatus="authentication_unavailable";}
+}
+if(runtimeToken){
+ try{
+   const response=await fetch("https://nexus-ai-api.jessicaridelle.workers.dev/?action=orivane-report",{headers:{Authorization:"Bearer "+runtimeToken},signal:AbortSignal.timeout(15000),redirect:"error"});
+   if(!response.ok)throw Error();
+   const result=await response.json();
+   if(result.name!=="Orivane-report"||result.schema!==1||!Array.isArray(result.runtime))throw Error();
+   runtime=result.runtime.slice(0,4000).filter(r=>r&&allowedCodes.has(r.code)&&modes.has(r.mode)&&/^\d{4}-\d{2}-\d{2}$/.test(r.day)&&Number.isSafeInteger(r.count)&&r.count>0).map(({day,code,mode,count})=>({day,code,mode,count}));
+   runtimeStatus="received";
+ }catch{runtimeStatus="unavailable";}
+}
+let autoRepair={status:"not_run",repairs:[]};
+if(process.env.ORIVANE_REPAIR_REPORT){
+ try{
+  const result=JSON.parse(fs.readFileSync(process.env.ORIVANE_REPAIR_REPORT,"utf8"));
+  if(!["failed","proposed","no_changes"].includes(result.status)||!Array.isArray(result.repairs))throw Error();
+  autoRepair={status:result.status,repairs:result.repairs.filter(r=>r.kind==="cache_version"&&/^[A-Za-z0-9_-]+\.(js|css)$/.test(r.file)&&/^\d+$/.test(r.from)&&/^\d+$/.test(r.to)).slice(0,100)};
+ }catch{autoRepair={status:"unavailable",repairs:[]};}
 }
 let browserChecks={status:"not_run",passed:0,failed:0,skipped:0,checks:[]};
 if(process.env.ORIVANE_BROWSER_REPORT){
@@ -187,7 +219,7 @@ if(process.env.ORIVANE_BROWSER_REPORT){
   }
 }
 const failed=checks.filter(c=>c.status==="fail").length;
-const report={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:process.env.GITHUB_SHA||null,codeChecks:{passed:checks.length-failed,failed,checks},browserChecks,runtimeStatus,runtime,privacy:"Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",limits:"Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require the read-only report token."};
+const report={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:process.env.GITHUB_SHA||null,codeChecks:{passed:checks.length-failed,failed,checks},browserChecks,autoRepair,runtimeStatus,runtime,privacy:"Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",limits:"Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require authenticated read-only access. Automatic repair is limited to cache-version synchronization; other bugs require review."};
 fs.writeFileSync("Orivane-report.json",JSON.stringify(report,null,2)+"\n");
 console.log("ORIVANE code checks:",checks.length-failed,"passed;",failed,"failed. Runtime report:",runtimeStatus);
 if(failed||browserChecks.failed)process.exitCode=1;
