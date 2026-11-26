@@ -473,3 +473,20 @@ body.studio-open,body.workspace-open,body.action-open{overflow:hidden}
 
 /* Chat artifact controls: compact, responsive, accessible, no site redesign. */
 .orivane-chat-tools{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0}.orivane-artifact-button{font:inherit;font-size:12px;line-height:1.35;color:inherit;background:transparent;border:1px solid var(--line,#444);border-radius:8px;padding:6px 10px;cursor:pointer;min-height:32px}.orivane-artifact-button:hover,.orivane-artifact-button.mode-active,.orivane-artifact-button[aria-pressed=true]{border-color:var(--accent,#f59e0b);color:var(--accent,#f59e0b)}.orivane-artifact-button:focus-visible{outline:2px solid var(--accent,#f59e0b);outline-offset:2px}.orivane-code-tools,.orivane-artifact-group,.orivane-attachment-tray{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;padding:8px;border:1px solid var(--line,#444);border-radius:9px;margin:6px 0;overflow-wrap:anywhere}.orivane-code-tools span{flex:1;min-width:0}.orivane-attachment-tray[hidden]{display:none!important}.orivane-inline-image{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:100%}.orivane-inline-image img{max-width:min(100%,520px);height:auto}.user-message.orivane-markdown p{margin:0;color:inherit}.orivane-markdown a{overflow-wrap:anywhere}.orivane-chat-tools button{flex:0 0 auto}
+
+
+/* Compact chat-local tools */
+.orivane-conversation-tools{display:flex;flex-wrap:wrap;gap:7px;align-items:center;width:100%;margin:8px 0;color:var(--muted)}
+.orivane-conversation-tools button,.orivane-local-actions button{font:inherit;font-size:11px;line-height:1.35;border:1px solid var(--line);border-radius:8px;padding:5px 9px;background:transparent;color:inherit;cursor:pointer}
+.orivane-conversation-tools button:hover,.orivane-local-actions button:hover,.orivane-conversation-tools button[aria-expanded=true]{border-color:var(--accent);color:var(--accent)}
+.orivane-conversation-tools button:disabled{opacity:.45;cursor:default}
+.orivane-find-panel{display:flex;flex:1 0 100%;min-width:0;gap:6px;flex-wrap:wrap;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+.orivane-find-panel[hidden]{display:none}
+.orivane-find-panel input{flex:1 1 150px;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:7px;color:inherit;background:transparent;font:inherit}
+.orivane-find-counter{font-size:11px;white-space:nowrap;min-width:0}
+.orivane-find-match{outline:1px solid var(--accent);outline-offset:2px;border-radius:12px}
+.orivane-find-current{outline:2px solid var(--accent);outline-offset:3px}
+.orivane-local-actions{display:inline-flex;flex-wrap:wrap;gap:5px;align-items:center}
+.user-message .orivane-local-actions{display:flex;justify-content:flex-end;margin-top:8px;color:inherit}
+.assistant-message .orivane-local-actions{margin-left:4px}
+@media(max-width:600px){.orivane-conversation-tools button,.orivane-local-actions button{min-height:32px}.orivane-find-panel input{flex-basis:100%}.orivane-find-counter{margin-right:auto}}
