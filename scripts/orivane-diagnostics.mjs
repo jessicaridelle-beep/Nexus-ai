@@ -172,8 +172,22 @@ if(process.env.ORIVANE_REPORT_TOKEN){
     runtimeStatus="received";
   }catch{runtimeStatus="unavailable";}
 }
+let browserChecks={status:"not_run",passed:0,failed:0,skipped:0,checks:[]};
+if(process.env.ORIVANE_BROWSER_REPORT){
+  try{
+    const browserReport=JSON.parse(fs.readFileSync(process.env.ORIVANE_BROWSER_REPORT,"utf8"));
+    if(!Array.isArray(browserReport.checks)||!browserReport.checks.length)throw Error();
+    const results=browserReport.checks.slice(0,100).map(c=>{
+      if(!c||typeof c.name!=="string"||!["pass","fail","skip"].includes(c.status))throw Error();
+      return {name:c.name.slice(0,180),status:c.status,...(typeof c.code==="string"&&/^[a-z_]+$/.test(c.code)?{code:c.code}:{})};
+    });
+    browserChecks={status:"completed",passed:results.filter(c=>c.status==="pass").length,failed:results.filter(c=>c.status==="fail").length,skipped:results.filter(c=>c.status==="skip").length,checks:results};
+  }catch{
+    browserChecks={status:"unavailable",passed:0,failed:1,skipped:0,checks:[{name:"Browser test report unavailable",status:"fail",code:"report_missing"}]};
+  }
+}
 const failed=checks.filter(c=>c.status==="fail").length;
-const report={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:process.env.GITHUB_SHA||null,codeChecks:{passed:checks.length-failed,failed,checks},runtimeStatus,runtime,privacy:"Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",limits:"Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require the read-only report token."};
+const report={name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),commit:process.env.GITHUB_SHA||null,codeChecks:{passed:checks.length-failed,failed,checks},browserChecks,runtimeStatus,runtime,privacy:"Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",limits:"Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require the read-only report token."};
 fs.writeFileSync("Orivane-report.json",JSON.stringify(report,null,2)+"\n");
 console.log("ORIVANE code checks:",checks.length-failed,"passed;",failed,"failed. Runtime report:",runtimeStatus);
-if(failed)process.exitCode=1;
+if(failed||browserChecks.failed)process.exitCode=1;
