@@ -101,6 +101,40 @@ async function orivaneReportRead(env){
   const result=await env.DB.prepare("SELECT day,code,mode,count FROM orivane_report_counts WHERE day >= date('now','-30 days') ORDER BY day DESC,code,mode LIMIT 4000").all();
   return {name:"Orivane-report",schema:1,generatedAt:new Date().toISOString(),retentionDays:30,runtime:(result.results||[]).filter(r=>ORIVANE_REPORT_CODES.has(r.code)&&ORIVANE_REPORT_MODES.has(r.mode)&&/^\d{4}-\d{2}-\d{2}$/.test(r.day)&&Number.isSafeInteger(r.count)&&r.count>0).map(({day,code,mode,count})=>({day,code,mode,count})),privacy:"Aggregate technical counts only; no messages, prompts, users, IPs, URLs, credentials or raw errors."};
 }
+/* GitHub's short-lived signed workflow identity grants read-only diagnostics access. */
+const ORIVANE_REPORT_ISSUER="https://token.actions.githubusercontent.com";
+const ORIVANE_REPORT_AUDIENCE="orivane-diagnostics-read";
+function orivaneReportClaimsValid(c,now=Math.floor(Date.now()/1000)){
+  return !!c&&c.iss===ORIVANE_REPORT_ISSUER&&c.aud===ORIVANE_REPORT_AUDIENCE&&
+    c.repository_id==="1443488586"&&c.repository==="jessicaridelle-beep/Nexus-ai"&&
+    c.ref==="refs/heads/main"&&c.workflow_ref==="jessicaridelle-beep/Nexus-ai/.github/workflows/orivane-diagnostics.yml@refs/heads/main"&&
+    (!c.job_workflow_ref||c.job_workflow_ref===c.workflow_ref)&&["push","schedule","workflow_dispatch"].includes(c.event_name)&&
+    c.runner_environment==="github-hosted"&&Number.isInteger(c.exp)&&Number.isInteger(c.nbf)&&Number.isInteger(c.iat)&&
+    c.exp>now&&c.nbf<=now+30&&c.iat<=now+30&&c.iat>=now-600&&c.exp-c.iat<=600;
+}
+function orivaneDecodeJwt(value){
+  if(!/^[A-Za-z0-9_-]+$/.test(value))throw Error("Invalid token encoding");
+  const b64=value.replace(/-/g,"+").replace(/_/g,"/");return Uint8Array.from(atob(b64+"=".repeat((4-b64.length%4)%4)),c=>c.charCodeAt(0));
+}
+async function orivaneReportOidcMatches(request){
+  try{
+    if(request.method!=="GET")return false;
+    const auth=request.headers.get("Authorization")||"";
+    if(!auth.startsWith("Bearer ")||auth.length>16384)return false;
+    const parts=auth.slice(7).split(".");if(parts.length!==3)return false;
+    const decoder=new TextDecoder();
+    const h=JSON.parse(decoder.decode(orivaneDecodeJwt(parts[0]))),c=JSON.parse(decoder.decode(orivaneDecodeJwt(parts[1])));
+    if(h.alg!=="RS256"||typeof h.kid!=="string"||h.kid.length>256||!orivaneReportClaimsValid(c))return false;
+    const response=await fetch(ORIVANE_REPORT_ISSUER+"/.well-known/jwks",{redirect:"error",signal:AbortSignal.timeout(6000)});
+    if(!response.ok)return false;
+    const keys=(await response.json()).keys;
+    if(!Array.isArray(keys))return false;
+    const jwk=keys.find(k=>k.kid===h.kid&&k.kty==="RSA"&&(!k.alg||k.alg==="RS256")&&(!k.use||k.use==="sig"));
+    if(!jwk)return false;
+    const key=await crypto.subtle.importKey("jwk",jwk,{name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["verify"]);
+    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5",key,orivaneDecodeJwt(parts[2]),new TextEncoder().encode(parts[0]+"."+parts[1]));
+  }catch{return false;}
+}
 async function orivaneReportTokenMatches(request,env){
   const supplied=request.headers.get("Authorization")||"", expected=env.ORIVANE_REPORT_TOKEN;
   if(typeof expected!=="string"||expected.length<32||supplied.length>512||!supplied.startsWith("Bearer "))return false;
@@ -379,7 +413,7 @@ export default {
     if(requestedAction==="orivane-report"){
       if(!["GET","POST"].includes(request.method))return json({error:"Method not allowed."},405);
       if(!env.DB)return json({error:"Diagnostic storage is unavailable."},503);
-      const tokenOK=request.method==="GET"&&await orivaneReportTokenMatches(request,env);
+      const tokenOK=request.method==="GET"&&((await orivaneReportTokenMatches(request,env))||(await orivaneReportOidcMatches(request)));
       const ownerOK=!tokenOK&&isAllowedSiteOrigin(origin)&&(await currentUser(request,env.DB))?.role==="owner";
       if(!tokenOK&&!ownerOK)return json({error:"Owner access required."},403);
       try{
