@@ -34,7 +34,7 @@ check("Service worker cached assets exist",()=>{
 });
 check("Chat asset versions match service worker",()=>{
   const html=fs.readFileSync("index.html","utf8"),sw=fs.readFileSync("sw.js","utf8");
-  for(const file of ["script.js","owner-panel.js","style.css"]){
+  for(const file of [...new Set([...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))\?v=\d+"/g)].map(m=>m[1]))]){
     const re=new RegExp(file.replace(".","\\.")+"\\?v=\\d+");
     assert.ok(html.match(re));assert.equal(html.match(re)[0],sw.match(re)?.[0]);
   }
@@ -150,7 +150,16 @@ check("Unclosed bold detected on server and browser; literal code preserved",()=
   assert.equal(ctx.orivaneReplyIssues("**bold**").includes("markdown_unclosed_bold"),false);
   assert.ok(browser.includes('codes.push("browser_unclosed_bold")'));
 });
-const allowedCodes=new Set(["reply_checked","empty_reply","empty_stream","stream_interrupted","malformed_stream","error_reply","invalid_card","model_failure","web_unavailable","web_billing_required","web_no_results","website_unavailable","image_failure","browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_unclosed_bold","markdown_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const allowedCodes=new Set(JSON.parse(worker.match(/const ORIVANE_REPORT_CODES = new Set\((\[[^\n]+\])\);/)[1]));
+check("Browser diagnostic codes match server allowlist",()=>{
+  const browserCodes=JSON.parse(browser.match(/const ORIVANE_BROWSER_CODES=new Set\((\[[^\n]+\])\);/)[1]);
+  for(const code of browserCodes)assert.ok(allowedCodes.has(code),code);
+  assert.ok(allowedCodes.has("image_quota"));assert.ok(allowedCodes.has("browser_render_unresolved"));
+});
+check("Report card loads scheduled and live data independently",()=>{
+  const panel=fs.readFileSync("owner-panel.js","utf8");
+  assert.ok(panel.includes("Promise.allSettled"));assert.ok(panel.includes('api("orivane-report")'));assert.ok(panel.includes("Bot list · recorded events"));assert.ok(panel.includes("scheduledRuntimeStatus"));
+});
 const modes=new Set(["fast","thinking","pro","unknown"]);
 let runtimeStatus="not_configured",runtime=[];
 if(process.env.ORIVANE_REPORT_TOKEN){
