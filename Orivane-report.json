@@ -1,10 +1,10 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:10:18.393Z",
-  "commit": "493a5b0874f3c0bc8548d22236962ea4805b52b0",
+  "generatedAt": "2026-11-26T21:11:43.189Z",
+  "commit": "a964b4f0878d37a0b49dd8a9e329254581e52ddd",
   "codeChecks": {
-    "passed": 24,
+    "passed": 25,
     "failed": 0,
     "checks": [
       {
@@ -101,6 +101,10 @@
       },
       {
         "name": "Streaming Markdown and readable copy formatting",
+        "status": "pass"
+      },
+      {
+        "name": "Clarification card hides raw protocol and accepts empty choices",
         "status": "pass"
       }
     ]
