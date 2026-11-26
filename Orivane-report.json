@@ -1,11 +1,11 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:19:09.931Z",
-  "commit": "1deb0296de552055331230a47fa898a71b86925d",
+  "generatedAt": "2026-11-26T21:19:21.229Z",
+  "commit": "0861db27c1c81f58831b3212dbdbff8bbebd1837",
   "codeChecks": {
-    "passed": 28,
-    "failed": 0,
+    "passed": 29,
+    "failed": 1,
     "checks": [
       {
         "name": "JavaScript syntax: canvas.js",
@@ -81,7 +81,7 @@
       },
       {
         "name": "Chat asset versions match service worker",
-        "status": "pass"
+        "status": "fail"
       },
       {
         "name": "Reply watchdog catches known empty and error replies",
@@ -117,6 +117,14 @@
       },
       {
         "name": "Unclosed bold detected on server and browser; literal code preserved",
+        "status": "pass"
+      },
+      {
+        "name": "Browser diagnostic codes match server allowlist",
+        "status": "pass"
+      },
+      {
+        "name": "Report card loads scheduled and live data independently",
         "status": "pass"
       }
     ]
