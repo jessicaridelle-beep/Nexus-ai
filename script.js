@@ -219,12 +219,12 @@ async function orivaneGenerateImage(prompt){
 
 function renderMessageText(container,text){if(/\x60\x60\x60orivane-ui\b/i.test(text)){container.textContent=text;return;}const url=getGifUrlFromText(text);if(!url||/\x60\x60\x60|!\[[^\]]*\]\(https?:\/\//.test(text)){orivaneMarkdown(container,text);return;}const clean=text.replace(url,"").trim();if(clean)orivaneMarkdown(container,clean);const img=document.createElement("img");img.className="chat-gif";img.src=url;img.alt="GIF";img.loading="lazy";img.referrerPolicy="no-referrer";img.onerror=()=>{img.remove();appendLink(container,url,"Open GIF");};container.appendChild(img);}
 function addMessage(role,text,restore=false){if(role==="user"){const el=document.createElement("div");el.className="user-message";renderMessageText(el,text);content.appendChild(el);return;}
- const row=document.createElement("div");row.className="assistant-message";const icon=document.createElement("span");icon.className="message-icon";icon.textContent="O";const body=document.createElement("div");body.className="message-body";const title=document.createElement("b");title.textContent=(()=>{try{return JSON.parse(localStorage.getItem("orivane-personal-admin-v1")||"{}").assistantName||"ORIVANE"}catch{return "ORIVANE"}})()+" 🟠";const p=document.createElement("div");p.className="assistant-message-content";const parsed=orivaneParseCard(text);renderMessageText(p,parsed.text);const actions=document.createElement("div");actions.className="message-actions";const copy=document.createElement("button");copy.type="button";copy.textContent=orivaneT("Copy");copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(orivanePlainText(orivaneReadableReply(text)));copy.textContent=orivaneT("Copied!");setTimeout(()=>copy.textContent=orivaneT("Copy"),1400);}catch{copy.textContent="Select text to copy";}});actions.append(copy);const speak=document.createElement("button");speak.type="button";speak.textContent=orivaneT("Read aloud");speak.addEventListener("click",()=>{if(!("speechSynthesis" in window)){speak.textContent="Not supported";return;}if(window.speechSynthesis.speaking){window.speechSynthesis.cancel();speak.textContent=orivaneT("Read aloud");return;}const utterance=new SpeechSynthesisUtterance(orivanePlainText(orivaneReadableReply(text)));utterance.onend=()=>speak.textContent=orivaneT("Read aloud");utterance.onerror=()=>speak.textContent="Try again";speak.textContent=orivaneT("Stop");window.speechSynthesis.speak(utterance);});actions.append(speak);body.append(title,p,actions);row.append(icon,body);content.appendChild(row);if(parsed.card)orivaneRenderCard(row,parsed.card);return row;}
+ const row=document.createElement("div");row.className="assistant-message";const icon=document.createElement("span");icon.className="message-icon";icon.textContent="O";const body=document.createElement("div");body.className="message-body";const title=document.createElement("b");title.textContent=(()=>{try{return JSON.parse(localStorage.getItem("orivane-personal-admin-v1")||"{}").assistantName||"ORIVANE"}catch{return "ORIVANE"}})()+" 🟠";const p=document.createElement("div");p.className="assistant-message-content";const parsed=orivaneParseCard(text);renderMessageText(p,orivaneUnclosedBold(parsed.text,true).text);const actions=document.createElement("div");actions.className="message-actions";const copy=document.createElement("button");copy.type="button";copy.textContent=orivaneT("Copy");copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(orivanePlainText(orivaneReadableReply(text)));copy.textContent=orivaneT("Copied!");setTimeout(()=>copy.textContent=orivaneT("Copy"),1400);}catch{copy.textContent="Select text to copy";}});actions.append(copy);const speak=document.createElement("button");speak.type="button";speak.textContent=orivaneT("Read aloud");speak.addEventListener("click",()=>{if(!("speechSynthesis" in window)){speak.textContent="Not supported";return;}if(window.speechSynthesis.speaking){window.speechSynthesis.cancel();speak.textContent=orivaneT("Read aloud");return;}const utterance=new SpeechSynthesisUtterance(orivanePlainText(orivaneReadableReply(text)));utterance.onend=()=>speak.textContent=orivaneT("Read aloud");utterance.onerror=()=>speak.textContent="Try again";speak.textContent=orivaneT("Stop");window.speechSynthesis.speak(utterance);});actions.append(speak);body.append(title,p,actions);row.append(icon,body);content.appendChild(row);if(parsed.card)orivaneRenderCard(row,parsed.card);return row;}
 function restoreMemory(){if(!memoryEnabled)return;try{const saved=JSON.parse(localStorage.getItem(MEMORY_KEY)||"[]");if(Array.isArray(saved)){saved.slice(-30).forEach(m=>{if(m&&["user","assistant"].includes(m.role)&&typeof m.content==="string"){conversation.push(m);addMessage(m.role,m.content,true);}});if(conversation.length)welcome.hidden=true;}}catch{localStorage.removeItem(MEMORY_KEY);}}
 
 /* Local reply watchdog. Only fixed diagnostic codes are saved or sent by the authenticated owner. */
 const ORIVANE_LOCAL_REPORT="orivane-report-local-v1";
-const ORIVANE_BROWSER_CODES=new Set(["browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_runtime_error","browser_network_error","browser_reply_checked"]);
+const ORIVANE_BROWSER_CODES=new Set(["browser_empty_stream","browser_retry_ok","browser_retry_failed","browser_reply_error","browser_invalid_card","browser_render_error","browser_unclosed_bold","browser_runtime_error","browser_network_error","browser_reply_checked"]);
 function orivaneLocalReport(){
   try{const rows=JSON.parse(localStorage.getItem(ORIVANE_LOCAL_REPORT)||"[]");return Array.isArray(rows)?rows.filter(r=>r&&ORIVANE_BROWSER_CODES.has(r.code)&&/^\d{4}-\d{2}-\d{2}$/.test(r.day)&&["fast","thinking","pro","unknown"].includes(r.mode)&&Number.isSafeInteger(r.count)&&r.count>0).slice(0,300):[];}catch{return [];}
 }
@@ -236,6 +236,25 @@ function orivaneBrowserReport(codes){
   if(typeof signedInUser!=="undefined"&&signedInUser?.role==="owner")fetch(ORIVANE_API_URL+"?action=orivane-report",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({codes:known,mode}),keepalive:true}).catch(()=>{});
 }
 // Check the actual message DOM, not merely the model's valid Markdown.
+function orivaneUnclosedBold(text,repair=false){
+  let fence=null,found=false;
+  const result=String(text||"").split("\n").map(line=>{
+    const f=line.match(/^\s*(\x60{3,}|~{3,})/);
+    if(f){if(!fence)fence=f[1];else if(f[1][0]===fence[0]&&f[1].length>=fence.length)fence=null;return line;}
+    if(fence||/^\s{4,}\S|^\t/.test(line))return line;
+    const masked=line.replace(/(\x60+)(.*?)\1/g,m=>" ".repeat(m.length)).replace(/\\./g,m=>" ".repeat(m.length)).replace(/https?:\/\/[^\s<>]+/gi,m=>" ".repeat(m.length));
+    let open=null;
+    for(const run of masked.matchAll(/(?<!\*)\*{2,3}(?!\*)/g)){
+      const i=run.index,n=run[0].length,before=masked[i-1]||"",after=masked[i+n]||"";
+      if(open&&n===open[0].length&&before&&!/\s/.test(before)){open=null;continue;}
+      if(!open&&(!before||/[\s([{:>"'—–-]/.test(before))&&after&&!/[\s*]/.test(after))open=run;
+    }
+    if(!open)return line;
+    found=true;return repair?line.slice(0,open.index)+line.slice(open.index+open[0].length):line;
+  }).join("\n");
+  return {found,text:result};
+}
+
 function orivaneRenderIssues(row,reply){
   const body=row?.querySelector(".assistant-message-content"),parsed=orivaneParseCard(reply);
   if(!body)return ["missing_body"];
@@ -245,6 +264,7 @@ function orivaneRenderIssues(row,reply){
   copy.querySelectorAll("pre,code").forEach(node=>node.remove());
   const visible=copy.textContent||"";
   const issues=[];
+  if(orivaneUnclosedBold(visible).found)issues.push("unclosed_bold");
   if(parsed.card&&!row.querySelector(".orivane-interactive-card"))issues.push("missing_card");
   if(/\[\/?ORIVANE_CARD\]/.test(visible))issues.push("raw_card");
   const prose=source.replace(/^\s*\x60\x60\x60[^\n]*\n[\s\S]*?(?:^\s*\x60\x60\x60[^\n]*$|(?![\s\S]))/gm,"").replace(/\x60[^\x60\n]+\x60/g,"").replace(/\\[\\*_[\]~]/g,"");
@@ -258,7 +278,7 @@ function orivaneCheckRenderedReply(row,reply){
     if(!orivaneRenderIssues(row,reply).length)return;
     orivaneBrowserReport(["browser_render_error"]);
     const body=row?.querySelector(".assistant-message-content"),parsed=orivaneParseCard(reply);
-    if(body){body.replaceChildren();renderMessageText(body,parsed.text);}
+    if(body){body.replaceChildren();renderMessageText(body,orivaneUnclosedBold(parsed.text,true).text);}
     if(parsed.card&&!row?.querySelector(".orivane-interactive-card"))orivaneRenderCard(row,parsed.card);
   }catch{orivaneBrowserReport(["browser_runtime_error"]);}
 }
@@ -266,7 +286,9 @@ function orivaneCheckRenderedReply(row,reply){
 function orivaneCheckReply(reply){
   const value=String(reply||"").trim(),codes=["browser_reply_checked"];
   if(/^(?:Error:\s*)?(?:The AI stream returned an empty response\.?|The AI returned an empty response\.?|The AI model did not return a response\.?|The response did not complete\.?|The live response was interrupted\.[\s\S]*)$/i.test(value))codes.push("browser_reply_error");
-  if(orivaneParseCard(value).invalid)codes.push("browser_invalid_card");
+  const parsed=orivaneParseCard(value);
+  if(parsed.invalid)codes.push("browser_invalid_card");
+  if(orivaneUnclosedBold(parsed.text).found)codes.push("browser_unclosed_bold");
   orivaneBrowserReport(codes);
 }
 window.addEventListener("error",event=>{if(event.error)orivaneBrowserReport(["browser_runtime_error"]);});
