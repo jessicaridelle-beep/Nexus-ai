@@ -28,13 +28,19 @@ function open(){
  intro.append(node("div",{class:"owner-kicker"},"ORIVANE · ADMIN CONTROL CENTER"),node("h2",{class:"owner-title"},"Control Center"),node("p",{class:"owner-sub"},"Appearance and personal AI settings are local. Global AI controls are available inside the Admin Panel."));
  head.append(intro,close);card.append(head);
  const tabs=node("div",{class:"admin-tabs"}),content=node("div",{class:"admin-content"});card.append(tabs,content);overlay.append(card);overlay.onclick=e=>{if(e.target===overlay)overlay.hidden=true};document.body.append(overlay);
- let active="Overview";const names=["Overview","Life tools","Appearance","AI controls","Global AI","Visitors","Admin Lab"];
+ let active="Overview";const names=["Overview","Life tools","Appearance","AI controls","Global AI","Visitors","Diagnostics","Admin Lab"];
  function render(){
   tabs.replaceChildren();names.forEach(name=>{const b=node("button",{type:"button",class:name===active?"active":""},name);b.onclick=()=>{active=name;render()};tabs.append(b)});content.replaceChildren();
   if(active==="Overview"){
    const grid=node("div",{class:"owner-grid"});
    [["LOCAL NAME",cfg.appName,"Only this browser"],["DEFAULT MODE",cfg.defaultMode.toUpperCase(),"Your preferred response mode"],["MODEL",cfg.model==="auto"?"Automatic":cfg.model.toUpperCase(),"Configured model routing"],["GLOBAL POLICY","Owner protected","Applies to every visitor after saving"]].forEach(([a,b,c])=>{const t=node("article",{class:"owner-tile"});t.append(node("small",{},a),node("strong",{},b),node("p",{},c));grid.append(t)});
    content.append(grid,node("p",{class:"owner-foot"},"The AI receives your current local website settings on your messages. Shared website notes and global AI instructions are loaded securely by the Worker for every visitor."));
+  }
+  if(active==="Diagnostics"){
+   const area=node("div",{class:"admin-form"}),status=node("p",{class:"owner-foot"},"Download anonymous technical counts. No chat messages or API keys are stored.");
+   const download=node("button",{class:"owner-primary",type:"button"},"Download Orivane-report.json");
+   download.onclick=async()=>{download.disabled=true;status.textContent="Reading report…";try{const report=await api("orivane-report");report.localBrowser=typeof orivaneLocalReport==="function"?orivaneLocalReport():[];const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)+"\n"],{type:"application/json"}));const a=node("a",{href:url,download:"Orivane-report.json"});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);status.textContent="✓ Report exported. Share the file with your coding assistant.";}catch{status.textContent="Owner access or diagnostic storage is unavailable.";}finally{download.disabled=false;}};
+   area.append(status,download);content.append(area);
   }
   if(active==="Appearance"){
    const form=node("div",{class:"admin-form"});
