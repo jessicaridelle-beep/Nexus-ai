@@ -67,16 +67,61 @@ function orivaneUnclosedBold(text,repair=false){
   return {found,text:result};
 }
 
+function orivaneDiagnosticParseCard(raw,streaming=false) {
+  let text=String(raw||"").replace(/\r\n?/g,"\n");
+  if(/^\s*\x60\x60\x60orivane-ui\b/im.test(text))return {text,card:null};
+  // Models sometimes fence the card protocol. Unwrap only an exact card envelope,
+  // not ordinary JSON examples, code snippets or Canvas content.
+  text=text.replace(/^[ \t]*\x60{3}(?:json|orivane-card)?[ \t]*\n([ \t]*\[ORIVANE_CARD\][\s\S]*?\[\/ORIVANE_CARD\][ \t]*)\n[ \t]*\x60{3}[ \t]*(?=\n|$)/gim,"$1");
+  if(streaming){
+    text=text.replace(/^[ \t]*\x60{3}(?:json|orivane-card)?[ \t]*\n([ \t]*\[ORIVANE_CARD\][\s\S]*?)(?:\n[ \t]*\x60{0,2})?$/im,"$1");
+  }
+  let card=null,invalid=false,fenced=false,plain="",kept=[];
+  const open="[ORIVANE_CARD]",close="[/ORIVANE_CARD]";
+  function accept(payload){
+    try{
+      if(payload.length>3500)throw Error();
+      const data=JSON.parse(payload);
+      if(!data||!["poll","clarification","checklist"].includes(data.type)||typeof data.question!=="string"||!data.question.trim()||data.question.length>300||!Array.isArray(data.options)||data.options.length>(data.type==="checklist"?8:6)||data.options.some(v=>typeof v!=="string"||!v.trim()||v.length>160))throw Error();
+      const options=[...new Set(data.options.map(v=>v.trim()))];
+      if(options.length<(data.type==="poll"?2:data.type==="checklist"?1:0))throw Error();
+      if(!card)card={type:data.type,question:data.question.trim(),options};else invalid=true;
+    }catch{invalid=true;}
+  }
+  function flush(){
+    if(!plain)return;
+    let rest=plain,out="";
+    while(rest){
+      const start=rest.indexOf(open),orphan=rest.indexOf(close);
+      if(orphan!==-1&&(start===-1||orphan<start)){out+=rest.slice(0,orphan);rest=rest.slice(orphan+close.length);invalid=true;continue;}
+      if(start===-1){out+=rest;break;}
+      out+=rest.slice(0,start);
+      const end=rest.indexOf(close,start+open.length);
+      if(end===-1){if(!streaming)invalid=true;break;}
+      accept(rest.slice(start+open.length,end).trim());
+      rest=rest.slice(end+close.length);
+    }
+    if(streaming){for(const marker of [open,close]){for(let n=marker.length-1;n>=1;n--){if(out.endsWith(marker.slice(0,n))){out=out.slice(0,-n);break;}}}}
+    kept.push(out);plain="";
+  }
+  for(const line of text.split("\n")){
+    if(/^\s*\x60\x60\x60/.test(line)){flush();fenced=!fenced;kept.push(line+"\n");}
+    else if(fenced)kept.push(line+"\n");else plain+=line+"\n";
+  }
+  if(streaming)plain=plain.replace(/\n$/,"");
+  flush();
+  let visible=kept.join("").trim();
+  // Plain questions stay plain; explicitly emitted valid clarification envelopes remain interactive.
+  if(invalid&&!streaming&&!visible&&!card)visible="I couldn't display that question correctly. Please ask me to try again.";
+  return {text:visible,card,invalid};
+}
 function orivaneReplyIssues(text) {
   const value=String(text||"").trim(), issues=[];
   if(!value)return ["empty_reply"];
-  if(orivaneUnclosedBold(value).found)issues.push("markdown_unclosed_bold");
+  const parsed=orivaneDiagnosticParseCard(value);
+  if(orivaneUnclosedBold(parsed.text).found)issues.push("markdown_unclosed_bold");
   if(/^(?:Error:\s*)?(?:The AI stream returned an empty response\.?|The AI returned an empty response\.?|The AI model did not return a response\.?|The AI model returned no text after retrying\.[\s\S]*|The response did not complete\.?|The live response was interrupted\.[\s\S]*|The AI response was interrupted\.[\s\S]*)$/i.test(value))issues.push("error_reply");
-  const outside=value.split("\n").filter((line)=>!line.startsWith("> ")).join("\n");
-  if(!/^\s*\x60\x60\x60/m.test(outside)&&outside.includes("[ORIVANE_CARD]")){
-    const m=outside.match(/^\s*\[ORIVANE_CARD\](.{1,3500})\[\/ORIVANE_CARD\]\s*$/m);
-    try{if(!m)throw Error();const v=JSON.parse(m[1]);if(!["poll","clarification","checklist"].includes(v.type)||typeof v.question!=="string"||!v.question.trim()||v.question.length>300||!Array.isArray(v.options)||v.options.some(x=>typeof x!=="string"||!x.trim()||x.length>160)||v.options.length>(v.type==="checklist"?8:6)||new Set(v.options.map(x=>x.trim())).size<(v.type==="poll"?2:v.type==="checklist"?1:0))throw Error();}catch{issues.push("invalid_card");}
-  }
+  if(parsed.invalid)issues.push("invalid_card");
   return issues;
 }
 function orivaneDiagnosticToken(packet) {
