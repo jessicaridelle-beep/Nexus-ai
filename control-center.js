@@ -114,26 +114,17 @@ function enhanceCommandPalette(){
  add("Start a new conversation",()=>$("newChat")?.click());
  add("Scroll to control center",()=>$("orivaneDashboard")?.scrollIntoView({behavior:"smooth",block:"start"}));
 }
-function addTypingIndicator(){
- const row=document.createElement("div");row.className="assistant-message orivane-typing";row.setAttribute("role","status");row.setAttribute("aria-label","ORIVANE is typing");
- const icon=document.createElement("span");icon.className="message-icon";icon.textContent="O";const body=document.createElement("div");body.className="message-body";const label=document.createElement("b");label.textContent="ORIVANE is thinking";const dots=document.createElement("span");dots.className="orivane-typing-dots";dots.textContent=" ···";body.append(label,dots);row.append(icon,body);$("chatContent")?.append(row);return row;
-}
+// The main chat renderer owns all message DOM, including streaming and cards.
 function installTypingAnimation(){
- if(typeof window.addMessage!=="function")return;
- const original=window.addMessage;
- window.addMessage=function(role,text,restore=false){
-  if(role!=="assistant"||restore||window.matchMedia("(prefers-reduced-motion: reduce)").matches){return original(role,text,restore);}
-  const row=document.createElement("div");row.className="assistant-message";const icon=document.createElement("span");icon.className="message-icon";icon.textContent="O";const body=document.createElement("div");body.className="message-body";const title=document.createElement("b");title.textContent="ORIVANE 🟠";const p=document.createElement("div");p.className="assistant-message-content";const actions=document.createElement("div");actions.className="message-actions";
-  const copy=document.createElement("button");copy.type="button";copy.textContent="Copy";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(p.textContent);copy.textContent="Copied!";setTimeout(()=>copy.textContent="Copy",1200);}catch{copy.textContent="Select text to copy";}});
-  const speak=document.createElement("button");speak.type="button";speak.textContent="Read aloud";speak.addEventListener("click",()=>{if(!("speechSynthesis"in window))return;if(window.speechSynthesis.speaking){window.speechSynthesis.cancel();speak.textContent="Read aloud";return;}const utterance=new SpeechSynthesisUtterance(p.textContent);utterance.onend=()=>speak.textContent="Read aloud";speak.textContent="Stop";window.speechSynthesis.speak(utterance);});
-  actions.append(copy,speak);body.append(title,p,actions);row.append(icon,body);$("chatContent")?.append(row);
-  const content=String(text??"");let index=0;
-  const step=()=>{index=Math.min(content.length,index+Math.max(3,Math.ceil(content.length/180)));p.textContent=content.slice(0,index);if(index<content.length){setTimeout(step,Math.min(18,Math.max(7,1100/Math.max(content.length,1))));}else{tone("reply");}};
-  step();return row;
- };
  const originalSend=window.sendMessage;
  if(typeof originalSend==="function"&&!originalSend.__orivaneTypingWrapped){
-  const wrapped=async value=>{const indicator=addTypingIndicator();tone("send");try{return await originalSend(value);}finally{indicator.remove();}};
+  const wrapped=async function(value){
+   if(typeof value!=="string"||!value.trim()||$("sendButton")?.disabled)return originalSend.apply(this,arguments);
+   tone("send");
+   const result=await originalSend.apply(this,arguments);
+   if(result)tone("reply");
+   return result;
+  };
   wrapped.__orivaneTypingWrapped=true;window.sendMessage=wrapped;
  }
 }
