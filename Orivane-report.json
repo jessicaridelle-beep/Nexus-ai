@@ -1,11 +1,104 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": null,
+  "generatedAt": "2026-11-26T21:02:18.156Z",
+  "commit": "a824d30454aa9558bc07b38c16887a09aa077ac5",
   "codeChecks": {
-    "status": "awaiting_first_run"
+    "passed": 21,
+    "failed": 1,
+    "checks": [
+      {
+        "name": "JavaScript syntax: canvas.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: control-center.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: feature-suite.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: features.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: gif-accessibility.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: gif-picker.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: install.js",
+        "status": "pass"
+      },
+      {
+        "name": "JSON syntax: manifest.json",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: motion.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: owner-panel.js",
+        "status": "fail"
+      },
+      {
+        "name": "JavaScript syntax: script.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: scripts/orivane-diagnostics.mjs",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: studios.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: sw.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: worker.js",
+        "status": "pass"
+      },
+      {
+        "name": "JavaScript syntax: workspace.js",
+        "status": "pass"
+      },
+      {
+        "name": "HTML local assets exist",
+        "status": "pass"
+      },
+      {
+        "name": "Service worker cached assets exist",
+        "status": "pass"
+      },
+      {
+        "name": "Chat asset versions match service worker",
+        "status": "pass"
+      },
+      {
+        "name": "Reply watchdog catches known empty and error replies",
+        "status": "pass"
+      },
+      {
+        "name": "Stream token readers handle supported model packets",
+        "status": "pass"
+      },
+      {
+        "name": "Empty stream fallback and diagnostics wired",
+        "status": "pass"
+      }
+    ]
   },
   "runtimeStatus": "not_configured",
   "runtime": [],
-  "privacy": "Aggregate technical counts only; no private chat content or credentials."
+  "privacy": "Aggregate diagnostic codes only. No chat messages, user identities, IP addresses, API keys, or raw exception messages.",
+  "limits": "Syntax and targeted smoke tests cannot detect every logic bug or verify every factual answer. Runtime counts require the read-only report token."
 }
