@@ -1,11 +1,11 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T21:51:24.196Z",
-  "commit": "c635b80df3f3177ebd32c93c1051a0272bc68a53",
+  "generatedAt": "2026-11-26T22:00:41.735Z",
+  "commit": "76043e48be9fb4a95ba4ae6c8ce175a941c02077",
   "codeChecks": {
-    "passed": 33,
-    "failed": 1,
+    "passed": 37,
+    "failed": 0,
     "checks": [
       {
         "name": "JavaScript syntax: canvas.js",
@@ -101,7 +101,11 @@
       },
       {
         "name": "Empty stream fallback and diagnostics wired",
-        "status": "fail"
+        "status": "pass"
+      },
+      {
+        "name": "AI usage limits are distinguished from reconnect failures",
+        "status": "pass"
       },
       {
         "name": "Chat links are clickable and unsafe schemes rejected",
@@ -125,6 +129,14 @@
       },
       {
         "name": "Unclosed bold detected on server and browser; literal code preserved",
+        "status": "pass"
+      },
+      {
+        "name": "Admin session rejects forged, expired and wrong-origin access",
+        "status": "pass"
+      },
+      {
+        "name": "Google OAuth rejects invalid audience, issuer, nonce and expiry",
         "status": "pass"
       },
       {
