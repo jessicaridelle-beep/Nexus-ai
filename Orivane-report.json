@@ -1,8 +1,8 @@
 {
   "name": "Orivane-report",
   "schema": 1,
-  "generatedAt": "2026-11-26T22:02:05.941Z",
-  "commit": "e4d2ff148c7f8706b12e5e836ebbe92bae3c6cb2",
+  "generatedAt": "2026-11-27T08:22:24.219Z",
+  "commit": "2fc1be9f74b2f0b84424a81040c77b8c77bd0476",
   "codeChecks": {
     "passed": 37,
     "failed": 0,
@@ -160,8 +160,8 @@
   "browserChecks": {
     "status": "completed",
     "passed": 4,
-    "failed": 4,
-    "skipped": 1,
+    "failed": 5,
+    "skipped": 0,
     "checks": [
       {
         "name": "Browser: typed streamed reply renders bold, italics, and clickable link",
@@ -204,9 +204,10 @@
         "stage": "reply_rendered"
       },
       {
-        "name": "Live: deployed ORIVANE",
-        "status": "skip",
-        "code": "scheduled_or_manual_only"
+        "name": "Live: deployed ORIVANE receives a typed prompt and renders its reply",
+        "status": "fail",
+        "code": "assertion_failed",
+        "stage": "reply_rendered"
       }
     ]
   },
